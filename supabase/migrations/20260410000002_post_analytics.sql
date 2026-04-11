@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS post_analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id TEXT,
+  platform TEXT,
+  posted_at TIMESTAMPTZ,
+  impressions INT,
+  likes INT,
+  comments INT,
+  shares INT,
+  saves INT,
+  follows_from_post INT,
+  hook_type TEXT,
+  content_type TEXT,
+  sound_used TEXT,
+  caption_style TEXT,
+  watch_time_3s_pct FLOAT,
+  link_clicks INT,
+  dm_triggers INT,
+  winning_variable TEXT,
+  notes TEXT
+);

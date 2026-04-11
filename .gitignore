@@ -1,0 +1,29 @@
+# Environment
+.env
+.env.*
+!.env.template
+
+# Dependencies
+node_modules/
+
+# Secrets / auth
+cookies.json
+*.pem
+*.key
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/
+
+# Experiment artifacts (may contain signed URLs with embedded keys)
+experiments/
+
+# Generated output artifacts (may contain signed URLs)
+outputs/

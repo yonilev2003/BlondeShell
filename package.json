@@ -1,0 +1,51 @@
+{
+  "name": "blondeshell",
+  "version": "1.0.0",
+  "description": "BlondeShell automation backend",
+  "type": "module",
+  "main": "webhook/server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node webhook/server.js",
+    "train-lora": "node scripts/train_lora.js",
+    "generate": "node scripts/batch_generate.js",
+    "generate:beach": "node scripts/batch_generate.js --batch=beach",
+    "generate:gym": "node scripts/batch_generate.js --batch=gym",
+    "generate:street": "node scripts/batch_generate.js --batch=street",
+    "generate:home": "node scripts/batch_generate.js --batch=home",
+    "generate:images": "node scripts/batch_generate.js --images-only",
+    "generate:videos": "node scripts/batch_generate.js --videos-only",
+    "qa": "node scripts/qa_review.js",
+    "qa:beach": "node scripts/qa_review.js --batch=beach",
+    "regen": "node scripts/regenerate_rejects.js",
+    "publer:dry-run": "node scripts/publer_dry_run.js",
+    "publer:verify": "node scripts/verify_posts_live.js",
+    "agents:coo": "node agents/coo_agent.js",
+    "agents:marketing": "node agents/marketing_agent.js",
+    "agents:trends": "node agents/trends_agent.js",
+    "agents:learning": "node agents/learning_agent.js",
+    "fanvue:auth": "node scripts/fanvue_auth.js",
+    "publer:fill-queue": "node scripts/fill_publer_queue.js",
+    "publer:fill-queue-cycle2": "node scripts/fill_publer_queue_cycle2.js",
+    "generate:cycle2": "node scripts/generate_cycle2.js",
+    "generate:cycle2:images": "node scripts/generate_cycle2.js --images-only",
+    "generate:cycle2:videos": "node scripts/generate_cycle2.js --videos-only",
+    "c2pa:test": "node scripts/sign_c2pa.js",
+    "qa:batch": "node scripts/qa_batch_check.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@fal-ai/client": "^1.9.5",
+    "@supabase/supabase-js": "^2.49.0",
+    "archiver": "^6.0.1",
+    "c2pa-node": "^0.5.26",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2",
+    "form-data": "^4.0.0",
+    "node-cron": "^4.2.1",
+    "open": "^11.0.0",
+    "resend": "^6.10.0"
+  }
+}

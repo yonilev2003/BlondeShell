@@ -1,0 +1,27 @@
+{
+  "A": {
+    "title": "Beach Sunset, Sitting",
+    "short": "beach, sitting on sand, golden hour sunset",
+    "full_prompt": "photograph of blondeshell, Beach setting at golden hour sunset. Subject seated on sand. Ocean horizon visible in background. Warm golden light illuminating scene. Natural sand texture in foreground. Soft diffused lighting from setting sun. Relaxed comfortable pose. Clean composition with horizon line. Natural photography. No modifications."
+  },
+  "B": {
+    "title": "Beach Standing, Full Body",
+    "short": "beach, standing full body, golden hour, ocean background",
+    "full_prompt": "photograph of blondeshell, Beach setting with full body composition. Subject standing on sand. Ocean and sky visible in background. Golden hour warm lighting across entire frame. Natural sandy beach environment. Wide landscape perspective. Relaxed standing pose. Natural photography. No modifications."
+  },
+  "C": {
+    "title": "Studio Portrait, Closeup",
+    "short": "studio, tight portrait, key lighting, neutral backdrop",
+    "full_prompt": "photograph of blondeshell, Studio setting with professional key lighting. Tight portrait composition focused on face and shoulders. Neutral gray backdrop. Dimensional studio lighting setup. Direct camera angle. Sharp focus on portrait. Clean minimalist background. Studio photography technique. Natural photography. No modifications."
+  },
+  "D": {
+    "title": "Home Lifestyle, Sitting",
+    "short": "home interior, sitting relaxed, window light, warm ambiance",
+    "full_prompt": "photograph of blondeshell, Home interior setting with natural window light. Subject in relaxed seated pose. Warm ambient afternoon lighting. Simple home background. Casual intimate composition. Natural indoor light quality. Comfortable home environment aesthetic. Natural photography. No modifications."
+  },
+  "E": {
+    "title": "Athletic/Travel, Action",
+    "short": "desert landscape, walking pose, golden hour travel lighting",
+    "full_prompt": "photograph of blondeshell, Desert landscape setting with golden hour lighting. Subject in walking motion pose. Wide scenic background environment. Natural outdoor travel photography style. Warm golden light across landscape. Action composition with movement. Clean background with landscape context. Natural photography. No modifications."
+  }
+}
