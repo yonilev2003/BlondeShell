@@ -379,8 +379,8 @@ async function main() {
       const fanvueImages = approvedItems.filter(item => item.mediaType !== 'video');
       Promise.all(fanvueImages.map(async (item) => {
         try {
-          const audience  = item.tier === 'T2' ? 'subscribers' : 'followers-and-subscribers';
-          const isFree    = item.tier !== 'T2';
+          const audience  = 'subscribers';
+          const isFree    = false;
           const mediaUuid = await uploadMediaFromUrl(item.url, `${item.id}.png`);
           await fanvueCreatePost({ mediaUuids: [mediaUuid], caption: fanvueCaption, isFree, audience });
           console.log(`  ✓ Fanvue post created — item: ${item.id} tier: ${item.tier ?? 'T1'}`);
