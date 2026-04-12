@@ -294,7 +294,8 @@ refresh_token: ${refresh_token?.slice(0, 20)}...</pre>
 });
 
 // ── Agent cron schedule (all times UTC = ET + 4h in April = IL - 3h) ────────
-cron.schedule('0 4  * * *', () => runScript('twitter_morning_scan')); // 07:00 IL — Twitter reply bot
+// SUSPENDED 2026-04-12: Twitter account suspended, appeal pending
+// cron.schedule('0 4  * * *', () => runScript('twitter_morning_scan')); // 07:00 IL — Twitter reply bot
 cron.schedule('0 6  * * *', () => runAgent('learning_agent'));         // 02:00 ET | 09:00 IL — morning rule scan
 cron.schedule('0 10 * * *', () => runAgent('marketing_agent'));        // 06:00 ET | 13:00 IL — daily analytics
 cron.schedule('0 11 1 * *', () => runAgent('strategy_agent'));         // 07:00 ET | 14:00 IL — monthly strategy

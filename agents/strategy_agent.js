@@ -92,8 +92,8 @@ async function getContentPerformance() {
 async function getAgentRunHistory() {
   const { data } = await supabase
     .from('agent_logs')
-    .select('agent_name, run_at, status')
-    .order('run_at', { ascending: false })
+    .select('agent, created_at, status')
+    .order('created_at', { ascending: false })
     .limit(10);
   return data ?? [];
 }
@@ -134,7 +134,7 @@ ${currentPlan ? JSON.stringify(currentPlan.targets, null, 2) : 'No current plan.
 
 === AGENT HEALTH ===
 Recent runs: ${agentHistory.length} logged
-${agentHistory.slice(0, 3).map(r => `  ${r.agent_name} — ${r.run_at?.slice(0, 10)} — ${r.status}`).join('\n') || '  (none)'}
+${agentHistory.slice(0, 3).map(r => `  ${r.agent} — ${r.created_at?.slice(0, 10)} — ${r.status}`).join('\n') || '  (none)'}
 
 Generate the monthly plan for ${nextMonthStr} based on this data.
 If no historical data exists, use Month 1 targets as baseline and be optimistic but realistic.`;

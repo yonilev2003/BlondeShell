@@ -82,8 +82,16 @@ Flag requires_action = true if:
 
 // ─── Data fetchers ────────────────────────────────────────────────────────────
 
+// Max expected gap (hours) before an agent is considered down
+const AGENT_CADENCE_HOURS = {
+  marketing_agent:    26,   // daily
+  trends_agent:       26,   // daily
+  learning_agent:     26,   // daily
+  plan_update_agent:  200,  // weekly (~8 days grace)
+  strategy_agent:     800,  // monthly (~33 days grace)
+};
+
 async function getAgentHealth() {
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from('agent_logs')
     .select('agent, task, status, created_at')
@@ -97,7 +105,8 @@ async function getAgentHealth() {
   return KNOWN_AGENTS.map((name) => {
     const last = latestByAgent[name];
     const lastRun = last?.created_at ?? null;
-    const isDown = !lastRun || new Date(lastRun) < new Date(since24h);
+    const maxGapMs = (AGENT_CADENCE_HOURS[name] ?? 26) * 60 * 60 * 1000;
+    const isDown = !lastRun || new Date(lastRun) < new Date(Date.now() - maxGapMs);
     return { agent: name, last_run: lastRun, status: last?.status ?? 'never_run', down: isDown };
   });
 }
