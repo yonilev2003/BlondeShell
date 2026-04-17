@@ -66,13 +66,14 @@ const SLOTS = [
   { key: 'ig_reels',   platform: 'instagram', postType: 'reel',   mediaType: 'video', tiers: ['T1'],       utcHour: 16, utcMin: 0 },
   { key: 'ig_stories', platform: 'instagram', postType: 'story',  mediaType: 'video', tiers: ['T1'],       utcHour:  9, utcMin: 0, maxDuration: 15 },
   { key: 'tiktok_1',        platform: 'tiktok', postType: 'video',  mediaType: 'video', tiers: ['T1'], utcHour:  8, utcMin:  0, aiLabel: true },
-  { key: 'tiktok_story_1',  platform: 'tiktok', postType: 'story',  mediaType: 'video', tiers: ['T1'], utcHour:  8, utcMin:  5, aiLabel: true, maxDuration: 15 },
+  { key: 'tiktok_story_1',  platform: 'tiktok', postType: 'video',  mediaType: 'video', tiers: ['T1'], utcHour:  8, utcMin:  5, aiLabel: true, maxDuration: 15 },
   { key: 'tiktok_2',        platform: 'tiktok', postType: 'video',  mediaType: 'video', tiers: ['T1'], utcHour: 16, utcMin:  0, aiLabel: true },
-  { key: 'tiktok_story_2',  platform: 'tiktok', postType: 'story',  mediaType: 'video', tiers: ['T1'], utcHour: 16, utcMin:  5, aiLabel: true, maxDuration: 15 },
-  { key: 'twitter_1',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour:  6, utcMin: 0 },
-  { key: 'twitter_2',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour:  9, utcMin: 0 },
-  { key: 'twitter_3',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour: 15, utcMin: 0 },
-  { key: 'twitter_4',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour: 18, utcMin: 0 },
+  { key: 'tiktok_story_2',  platform: 'tiktok', postType: 'video',  mediaType: 'video', tiers: ['T1'], utcHour: 16, utcMin:  5, aiLabel: true, maxDuration: 15 },
+  // SUSPENDED 2026-04-12: Twitter account suspended, appeal pending
+  // { key: 'twitter_1',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour:  6, utcMin: 0 },
+  // { key: 'twitter_2',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour:  9, utcMin: 0 },
+  // { key: 'twitter_3',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour: 15, utcMin: 0 },
+  // { key: 'twitter_4',  platform: 'twitter',   postType: 'status', mediaType: 'image', tiers: ['T1','T2'],  utcHour: 18, utcMin: 0 },
 ];
 
 // A/B test config per date (cycle 1: Apr 12–15 | cycle 2: Apr 16–19)
