@@ -293,22 +293,15 @@ refresh_token: ${refresh_token?.slice(0, 20)}...</pre>
   }
 });
 
-// ── Agent cron schedule (all times UTC = ET + 4h in April = IL - 3h) ────────
-// SUSPENDED 2026-04-12: Twitter account suspended, appeal pending
-// cron.schedule('0 4  * * *', () => runScript('twitter_morning_scan')); // 07:00 IL — Twitter reply bot
-cron.schedule('0 6  * * *', () => runAgent('learning_agent'));         // 02:00 ET | 09:00 IL — morning rule scan
-cron.schedule('0 10 * * *', () => runAgent('marketing_agent'));        // 06:00 ET | 13:00 IL — daily analytics
-cron.schedule('0 11 1 * *', () => runAgent('strategy_agent'));         // 07:00 ET | 14:00 IL — monthly strategy
-cron.schedule('0 12 * * *', () => runAgent('coo_agent'));              // 08:00 ET | 15:00 IL — daily digest
-cron.schedule('0 13 * * *', () => runAgent('trends_agent'));           // 09:00 ET | 16:00 IL — trend scan
-cron.schedule('0 2  * * 1', () => runAgent('plan_update_agent'));      // 10:00 ET Sun | 01:00 IL Mon
-
-// 22:00 IL (19:00 UTC) — Learning Agent evening analytics run
-// Analyses last 24h posts: updates winning_variable, flags impressions > 2x average
-cron.schedule('0 19 * * *', () => {
-  console.log('[cron] 22:00 IL — learning_agent evening analytics run');
-  runAgent('learning_agent');
-});
+// ── Agent cron schedule v5.1 (all times UTC) ────────────────────────────────
+cron.schedule('0 3  * * *', () => runAgent('revenue_agent'));
+cron.schedule('0 6  * * *', () => runAgent('learning_agent'));
+cron.schedule('0 10 * * *', () => runAgent('marketing_agent'));
+cron.schedule('0 11 1 * *', () => runAgent('strategy_agent'));
+cron.schedule('0 12 * * *', () => runAgent('coo_agent'));
+cron.schedule('0 13 * * *', () => runAgent('trends_agent'));
+cron.schedule('0 19 * * *', () => runAgent('learning_agent'));
+cron.schedule('0 2  * * 1', () => runAgent('plan_update_agent'));
 
 // Every 2h — viral post checker: fires marketing + trends agents if any TikTok post >10K views in last 6h
 cron.schedule('0 */2 * * *', async () => {
