@@ -6,6 +6,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { logMistake } from '../lib/agent_runner.js';
+import { insertRule, logPattern, getNextRuleId } from '../lib/rule_inserter.js';
 import 'dotenv/config';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -74,6 +75,72 @@ async function getSubscriberEvents(days = 14) {
     .gte('created_at', since)
     .order('created_at', { ascending: false });
   return data ?? [];
+}
+
+async function getEngagementCurves(days = 14) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from('post_performance_curves')
+    .select('*')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false });
+  return data ?? [];
+}
+
+async function trackEngagementCurve(contentItemId, platform) {
+  const intervals = [
+    { field: 'hour_1', delayMs: 1 * 60 * 60 * 1000 },
+    { field: 'hour_6', delayMs: 6 * 60 * 60 * 1000 },
+    { field: 'hour_24', delayMs: 24 * 60 * 60 * 1000 },
+    { field: 'hour_48', delayMs: 48 * 60 * 60 * 1000 },
+    { field: 'day_7', delayMs: 7 * 24 * 60 * 60 * 1000 },
+  ];
+
+  const { data: item } = await supabase
+    .from('content_items')
+    .select('created_at, setting, mood')
+    .eq('id', contentItemId)
+    .single();
+
+  if (!item) return null;
+
+  const postTime = new Date(item.created_at).getTime();
+  const now = Date.now();
+  const elapsed = now - postTime;
+
+  const updates = {};
+  for (const { field, delayMs } of intervals) {
+    if (elapsed >= delayMs) {
+      const { data: scores } = await supabase
+        .from('platform_scores')
+        .select('impressions, engagement_rate, followers')
+        .eq('content_item_id', contentItemId)
+        .eq('platform', platform)
+        .order('date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (scores) updates[field] = scores;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) return null;
+
+  const { error } = await supabase
+    .from('post_performance_curves')
+    .upsert({
+      content_item_id: contentItemId,
+      platform,
+      ...updates,
+      hook_type: item.mood || null,
+      visual_style: item.setting || null,
+      created_at: new Date().toISOString(),
+    }, { onConflict: 'content_item_id,platform' })
+    .select()
+    .single();
+
+  if (error) console.error(`[learning_agent] curve tracking failed: ${error.message}`);
+  return updates;
 }
 
 async function getLastWeekReport() {
@@ -213,15 +280,29 @@ async function main() {
 
   try {
     // 1. Gather data in parallel
-    const [platformScores, contentItems, cooDigests, subEvents, lastReport] = await Promise.all([
+    const [platformScores, contentItems, cooDigests, subEvents, lastReport, engagementCurves] = await Promise.all([
       getPlatformScores(14),
       getContentItems(14),
       getCOODigests(14),
       getSubscriberEvents(14),
       getLastWeekReport(),
+      getEngagementCurves(14),
     ]);
 
-    console.log(`[learning_agent] Data: platform_scores=${platformScores.length}, content_items=${contentItems.length}, coo_digests=${cooDigests.length}, sub_events=${subEvents.length}`);
+    console.log(`[learning_agent] Data: platform_scores=${platformScores.length}, content_items=${contentItems.length}, coo_digests=${cooDigests.length}, sub_events=${subEvents.length}, curves=${engagementCurves.length}`);
+
+    // 1b. Track engagement curves for recent content
+    const recentItems = contentItems.filter(i => {
+      const age = Date.now() - new Date(i.created_at).getTime();
+      return age <= 7 * 24 * 60 * 60 * 1000;
+    });
+    for (const item of recentItems.slice(0, 20)) {
+      for (const platform of item.platforms || []) {
+        await trackEngagementCurve(item.id, platform).catch(err =>
+          console.error(`[learning_agent] curve track error: ${err.message}`)
+        );
+      }
+    }
 
     // 2. Analyze
     const contentAnalysis = analyzeContent(contentItems);
@@ -262,6 +343,49 @@ async function main() {
 
     // 6. Save report
     await saveReport(weekOf, parsed);
+
+    // 6b. Insert HIGH confidence rules into Obsidian + Supabase + skill files
+    const highConfidence = (parsed.recommendations ?? []).filter(
+      r => r.confidence?.toLowerCase() === 'high'
+    );
+    for (const rec of highConfidence) {
+      try {
+        const ruleId = await getNextRuleId();
+        await insertRule({
+          id: ruleId,
+          condition: rec.finding,
+          oldBehavior: 'Previous default behavior',
+          newRule: rec.action,
+          confidence: 'HIGH',
+          verifiedVia: 'learning_agent_analysis',
+          skillFile: null,
+        });
+        console.log(`[learning_agent] Inserted rule ${ruleId}: ${rec.action}`);
+      } catch (ruleErr) {
+        console.error(`[learning_agent] Rule insert failed: ${ruleErr.message}`);
+      }
+    }
+
+    // 6c. Write weekly pattern analysis to Obsidian
+    const curvesSummary = engagementCurves.slice(0, 10).map(c => ({
+      platform: c.platform,
+      hook_type: c.hook_type,
+      visual_style: c.visual_style,
+      hour_1: c.hour_1,
+      day_7: c.day_7,
+    }));
+
+    logPattern({
+      date: weekOf,
+      topPerformers: (parsed.recommendations ?? [])
+        .filter(r => r.confidence?.toLowerCase() === 'high')
+        .map(r => r.finding),
+      trends: parsed.data_gaps ?? [],
+      recommendations: (parsed.recommendations ?? []).map(r => `[${r.confidence}] ${r.action}`),
+      engagementCurves: curvesSummary.map(c =>
+        `${c.platform} (${c.hook_type}/${c.visual_style}): 1h=${JSON.stringify(c.hour_1)} 7d=${JSON.stringify(c.day_7)}`
+      ),
+    });
 
     // 7. Print
     console.log('\n' + '─'.repeat(60));
