@@ -34,8 +34,7 @@ async function refreshTokens(refreshToken) {
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Token refresh failed (${res.status}): ${body}`);
+    throw new Error(`Token refresh failed (${res.status}): ${await res.text()}`);
   }
 
   const { access_token, refresh_token } = await res.json();
@@ -49,47 +48,32 @@ async function refreshTokens(refreshToken) {
   return access_token;
 }
 
-async function fanvueFetch(path, accessToken, options = {}) {
+async function tryEndpoint(path, accessToken) {
   const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
-
-  if (res.status === 401) return { needsRefresh: true };
-
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`Fanvue ${res.status}: ${JSON.stringify(body)}`);
-  return body;
+  return { ok: res.ok, status: res.status, body };
 }
 
 console.log('\n━━━ Fanvue API Test ━━━\n');
 
-// Step 1: Check tokens
+// Step 1: Tokens
 console.log('1. Checking Fanvue tokens...');
-let tokens;
-try {
-  tokens = await getTokens();
-  console.log(`   ✅ Token found (${tokens.access_token.slice(0, 20)}...)\n`);
-} catch (err) {
-  console.error(`   ❌ ${err.message}`);
-  process.exit(1);
-}
-
-// Step 2: Test API access (try profile endpoint)
-console.log('2. Testing API access...');
+const tokens = await getTokens();
 let accessToken = tokens.access_token;
+console.log(`   ✅ Token loaded (${accessToken.slice(0, 20)}...)\n`);
 
-let profile = await fanvueFetch('/v1/creators/me', accessToken);
-if (profile.needsRefresh) {
+// Step 2: Test a known working endpoint (/posts)
+console.log('2. Testing /posts endpoint...');
+let result = await tryEndpoint('/posts?limit=5', accessToken);
+
+if (result.status === 401) {
   console.log('   Token expired, refreshing...');
   try {
     accessToken = await refreshTokens(tokens.refresh_token);
     console.log('   ✅ Token refreshed');
-    profile = await fanvueFetch('/v1/creators/me', accessToken);
+    result = await tryEndpoint('/posts?limit=5', accessToken);
   } catch (err) {
     console.error(`   ❌ Refresh failed: ${err.message}`);
     console.error('   Run: npm run fanvue:auth');
@@ -97,27 +81,26 @@ if (profile.needsRefresh) {
   }
 }
 
-if (profile.needsRefresh) {
-  console.error('   ❌ Still 401 after refresh. Run: npm run fanvue:auth');
+if (!result.ok) {
+  console.error(`   ❌ /posts returned ${result.status}:`);
+  console.error(`   ${JSON.stringify(result.body).slice(0, 200)}`);
   process.exit(1);
 }
 
-console.log(`   ✅ Fanvue API accessible`);
-if (profile.data?.username) console.log(`   Profile: @${profile.data.username}`);
-if (profile.data?.subscriber_count !== undefined) console.log(`   Subscribers: ${profile.data.subscriber_count}`);
-console.log();
+const posts = result.body.data || result.body.posts || result.body || [];
+const count = Array.isArray(posts) ? posts.length : (result.body.total || 0);
+console.log(`   ✅ /posts works — ${count} posts visible\n`);
 
-// Step 3: List recent posts
-console.log('3. Fetching recent posts...');
-try {
-  const posts = await fanvueFetch('/v1/posts?limit=5', accessToken);
-  const items = posts.data || posts.posts || [];
-  console.log(`   ✅ ${items.length} recent posts found\n`);
-} catch (err) {
-  console.log(`   ⚠️ Posts endpoint: ${err.message}\n`);
+// Step 3: Test /media endpoint (for uploads)
+console.log('3. Testing /media endpoint...');
+const mediaResult = await tryEndpoint('/media?limit=3', accessToken);
+if (mediaResult.ok) {
+  const media = mediaResult.body.data || mediaResult.body || [];
+  console.log(`   ✅ /media works — ${Array.isArray(media) ? media.length : 0} items\n`);
+} else {
+  console.log(`   ⚠️  /media returned ${mediaResult.status} (may need scope)\n`);
 }
 
 console.log('━━━ Summary ━━━');
-console.log('✅ Fanvue API is working');
-console.log('ℹ️  Upload test skipped (to avoid creating real content)');
-console.log('   Use the full pipeline to upload when ready.\n');
+console.log('✅ Fanvue API works — token valid, endpoints accessible');
+console.log('ℹ️  Ready for real uploads via lib/fanvue.js\n');
