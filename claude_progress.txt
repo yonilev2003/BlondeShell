@@ -4,8 +4,9 @@
 ---
 
 ## CURRENT BRANCH
-`claude/push-to-github-PjFnX` (not merged to main yet)
-Last commit: `a511bcd` — Sprint 1 test scripts (voice + fanvue upload/api verify)
+`main` — v5.2 merged (branch `claude/push-to-github-PjFnX` fully integrated)
+Only remaining for today: **night session** (`npm run schedule:night`).
+Tomorrow and beyond: Sprint 2 (Apr 19) → Launch (Apr 24) per v5.2 plan below.
 
 ---
 
