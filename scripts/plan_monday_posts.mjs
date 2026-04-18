@@ -17,11 +17,11 @@ const POSTS = [
     image: '/tmp/blondeshell_test_2_home_bedroom_casual.png',
     theme: 'home',
     tiktok: {
-      caption: `saturday morning in my new apartment >>> everything else\n\ntell me ur weekend plans in the comments, i'm bored lol\n\n#morningvibes #aesthetic #lalife #saturdaymorning #girlcore`,
+      caption: `monday vibes in my new apartment >>> everything else\n\ntell me ur weekend plans in the comments, i'm bored lol\n\n#morningvibes #aesthetic #lalife #mondayvibes #girlcore`,
       postTime: '14:00 UTC', // 9 AM ET / 6 AM PT - Saturday morning scroll
     },
     instagram: {
-      caption: `slow mornings, soft light, zero plans ☁️\n\nthe prettiest kind of chaos is doing nothing at all. currently debating if i should order breakfast or actually cook...\n\nwyd rn?\n\n.\n.\n.\n#slowliving #aestheticvibes #morninglight #homedecor #lastyle #softaesthetic #cozyhome #mininglife #vibesonly`,
+      caption: `slow mornings, soft light, zero plans ☁️\n\nthe prettiest kind of chaos is doing nothing at all. currently debating if i should order breakfast or actually cook...\n\nwyd rn?\n\n.\n.\n.\n#slowliving #aestheticvibes #morninglight #homedecor #lastyle #softaesthetic #cozyhome #minimalife #vibesonly`,
       postTime: '15:00 UTC', // 11 AM ET / 8 AM PT — IG morning
     },
   },
@@ -30,7 +30,7 @@ const POSTS = [
     theme: 'beach',
     tiktok: {
       caption: `golden hour >>> any hour\n\nsanta monica doing numbers today ☀️🌊\n\n#goldenhour #santamonica #beachgirl #lagirls #sunset`,
-      postTime: '01:00 UTC', // 9 PM ET / 6 PM PT — TikTok primetime
+      postTime: 'TUE_02:00 UTC', // Monday 7 PM PT = Tuesday 02:00 UTC — TikTok primetime
     },
     instagram: {
       caption: `california dreaming irl 🌅\n\nthe sun hit different today — like the universe was trying to remind me this is my life now.\n\nthrow a 🌊 in the comments if you'd rather be at the beach rn\n\n.\n.\n.\n#goldenhour #santamonica #california #beachvibes #sunsetchaser #californiagirl #beachgirl #lalife #lalifestyle #summeroutfit`,
@@ -40,14 +40,16 @@ const POSTS = [
 ];
 
 // Next Monday in LA timezone (UTC-7 in spring)
-function getNextMonday(utcTime) {
-  const [hour, min] = utcTime.split(' ')[0].split(':').map(Number);
+function getNextMonday(timeSpec) {
+  const isTuesday = timeSpec.startsWith('TUE_');
+  const time = timeSpec.replace('TUE_', '').split(' ')[0];
+  const [hour, min] = time.split(':').map(Number);
   const now = new Date();
   const daysUntilMonday = (1 - now.getUTCDay() + 7) % 7 || 7;
-  const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() + daysUntilMonday);
-  monday.setUTCHours(hour, min, 0, 0);
-  return monday.toISOString();
+  const target = new Date(now);
+  target.setUTCDate(now.getUTCDate() + daysUntilMonday + (isTuesday ? 1 : 0));
+  target.setUTCHours(hour, min, 0, 0);
+  return target.toISOString();
 }
 
 console.log('━━━ Monday Post Plan ━━━\n');
