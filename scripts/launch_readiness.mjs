@@ -69,16 +69,17 @@ console.log('─── 3. Fanvue tokens ───');
 try {
   const { data, error } = await supabase
     .from('fanvue_tokens')
-    .select('access_token, refresh_token, expires_at, updated_at')
+    .select('*')
     .eq('id', 'singleton')
     .single();
 
-  if (error || !data) fail('fanvue_tokens', 'no singleton row — run: npm run fanvue:auth');
+  if (error || !data) fail('fanvue_tokens', `no singleton row (${error?.message ?? 'empty'}) — run: npm run fanvue:auth`);
   else if (!data.access_token) fail('fanvue_tokens', 'access_token missing — run: npm run fanvue:auth');
   else {
-    const age = Math.round((Date.now() - new Date(data.updated_at).getTime()) / (60 * 60 * 1000));
-    pass(`fanvue_tokens (updated ${age}h ago)`);
-    if (age > 24) warn('fanvue_tokens', 'token may be expired — consider re-auth');
+    const updatedAt = data.updated_at ?? data.created_at ?? null;
+    const age = updatedAt ? Math.round((Date.now() - new Date(updatedAt).getTime()) / (60 * 60 * 1000)) : null;
+    pass(`fanvue_tokens${age !== null ? ` (updated ${age}h ago)` : ''}`);
+    if (age !== null && age > 24) warn('fanvue_tokens', 'token may be expired — consider re-auth');
   }
 } catch (e) { fail('fanvue_tokens', e.message); }
 console.log();
