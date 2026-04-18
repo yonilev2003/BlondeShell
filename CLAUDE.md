@@ -1,134 +1,189 @@
-# BlondeShell — CLAUDE.md v4.0
-# Aligned with v9.0 FINAL | Details live in skills/ and agents/
+# BlondeShell — CLAUDE.md v5.2
+# Full Autonomy Architecture | 2026-04-18
+
+## SECOND BRAIN — Obsidian Vault
+```
+obsidian/blondeshell-brain/
+  APIs/         — API references (load on demand via lib/obsidian.js)
+    fanvue.md   — Fanvue v2025-06-26
+    publer.md   — Publer v1
+  Rules/        — Learned rules (R-XXX.md), auto-inserted by learning_agent
+  Patterns/     — Weekly analytics + tool evaluations
+  Arcs/         — Brand storyline arcs
+  Mistakes/     — Error logs (YYYY-MM-DD.md)
+  Changelog/    — Weekly system changelog
+```
+Load via `import { loadAPIReference, readNote } from './lib/obsidian.js'`.
+Keep CLAUDE.md thin. Details live in the vault.
 
 ## MISSION
-Orchestration brain. Maximum automation, minimum owner time.
+Fully autonomous AI influencer. Zero human intervention for daily operations.
+Owner role: quarterly strategic goals + withdraw money.
+North Star: Fanvue conversions (not impressions).
 Month 1: 300 subs / $1,000 DM PPV / 5M impressions
 Month 12: $1,000,000/month net revenue, margin ≥65%
-Fanvue fee: 20% everywhere. No exceptions.
-Agents week X+1 > week X. Always.
+Fanvue fee: 20% everywhere. Substy: $99/mo + 8.5%.
 
-## SESSION START — ALWAYS FIRST
+## 5 PILLARS
+1. Webhook-driven conversation → content (DM → PPV generation)
+2. End-to-end publishing pipeline (inspiration → generate → QA → route → schedule)
+3. Strategic Brand Agent (arcs, collabs, annual planning)
+4. Learning Loop → Obsidian Second Brain (rules, patterns, audit trail)
+5. Dynamic monetization + CRM (segmentation, pricing, win-back)
+
+## SESSION START
 ```bash
 cat claude_progress.txt 2>/dev/null || echo "NO_PROGRESS_FILE"
-# NO FILE → setup_agent.md (Day 1 only)
-# FILE EXISTS → coding_agent.md
 claude --context-window compact
 ```
 
 ## PARALLELISM — MANDATORY
-```bash
-claude -p ".claude/agents/coding_agent.md" --task "[task_1]" &
-claude -p ".claude/agents/coding_agent.md" --task "[task_2]" &
-claude -p ".claude/agents/coding_agent.md" --task "[task_3]" &
-wait
-```
 Spawn ALL agents in ONE message. Batch ALL reads/writes. NEVER sequential after init.
 
 ## AGENT ROUTING
 | Task | Agent | Mode |
 |------|-------|------|
-| Daily digest + alerts + Sunday | coo.md | Interactive |
-| Image/video generation | content.md | Headless parallel |
-| Content QA | qa.md | Headless parallel |
-| Platform QA | qa/[platform].md | Headless parallel |
+| Daily digest + alerts | coo.md | Interactive |
+| Content pipeline | content.md + pipeline.js | Headless |
+| Content QA | qa.md → qa_gate.js | Headless auto |
+| Platform QA | qa/[platform].md | Headless |
 | DM + Substy oversight | dm.md | Headless |
-| Analytics + virality | marketing.md | Headless |
-| Learning loop + Obsidian | learning.md | Headless |
-| Loop video library | video.md | Headless |
-| Pre-deploy code QA | qa/code.md | Headless |
-| Opportunities | opportunities.md | Interactive/Headless |
-| Session init — Day 1 only | setup_agent.md | Interactive |
-| Active coding (3–5 parallel) | coding_agent.md | Headless parallel |
+| Scheduling + publishing | marketing.md → pipeline.js | Headless |
+| Learning loop + Obsidian | learning.md → rule_inserter.js | Headless |
+| Video library + vlogs | video.md → vlog.js | Headless |
+| Revenue + CRM | revenue_agent.js → crm.js | Headless |
+| Strategy + Brand Arcs | strategy_agent.js | Headless |
+| Trend scanning | trends.md | Headless |
+| Active coding | coding_agent.md | Headless parallel |
 
-## TOKEN EFFICIENCY
-File search = bash only, zero tokens:
-```bash
-grep -r "RULE" ./skills/ --include="*.md"
-cat skills/content/prompts.md
+## CONTENT ENGINE — Inspiration-Driven (no fixed stacks)
 ```
-Skill loading: grep → SELECT skill_path ORDER BY relevance_score LIMIT 3 → max 3 files, 500 tokens each.
-Context: INSERT INTO context_snapshots before /clear. SELECT snapshot_json after /clear.
+Brand Arc (strategy_agent) → Inspiration Engine → Creative Brief → Dynamic Prompt → Generate → QA Gate → Route → Schedule
+```
+- NO fixed stacks (beach/gym/street/home are DEAD)
+- Inspiration from: real model analysis + trends + analytics + Brand Arc context
+- Content types: photos, short clips, vlogs (arc-driven), voice notes, PPV
 
-## 95% CONFIDENCE RULE
-grep codebase → web search docs → confidence > 95%? implement : flag_to_owner.
-```xml
-<confidence_check>
-  <claim>[what]</claim><verified_via>[source]</verified_via>
-  <confidence>0.XX</confidence><action>implement|flag_to_owner</action>
-</confidence_check>
+## CHARACTER
 ```
+Name: Blonde Shell (@blondeshell / @itstheblondeshell)
+Age: 21 (born June 1, 2004) | Location: LA, California
+Persona: Gen Z, playful, chronically online, chaotic energy
+Physical: Platinum blonde, green eyes, athletic/toned, 58kg, 32B
+Interests: Fitness, gaming (Valorant, Fortnite, Sims, Stardew, Minecraft)
+Music: Taylor Swift, Doja Cat, Sabrina Carpenter, lo-fi
+Voice: ElevenLabs clone | Links: beacons.ai, Throne wishlist
+```
+
+## CHARACTER CONSISTENCY — seedream v4.5
+```
+Layer 1: seedream v4-5 base model
+Layer 2: IP-Adapter FaceID → face consistency via reference_images table
+Layer 3: 30-image hero reference dataset (assets/reference/hero/)
+Layer 4: Top 5 refs by context + all hero images → every call
+< 0.85 → REJECT | < 0.85 x2 → yellow alert | < 0.80 → HARD STOP
+```
+Image: fal-ai/seedream-v4-5 | Video: fal-ai/kling-video/v3/standard/image-to-video
+Voice: ElevenLabs Starter | Lip-sync: Kling v3 audio-to-video (native)
 
 ## CONTENT TIERS
 | Tier | Platforms | Rule |
 |------|-----------|------|
 | T1 — SFW | IG, TikTok, YT, Threads, LinkedIn, Twitch | 30%+ visual distance from T2 |
 | T2 — Suggestive | Twitter/X, Reddit ONLY | Full definition: skills/qa/platform-rules.md |
-| T3 — Fanvue | Fanvue ONLY | Free-to-sub + PPV via Substy |
+| T3 — Fanvue | Fanvue ONLY | Free-to-sub + PPV via Fanvue API |
 
 Safety:
 - HARD STOP: age ambiguity → REJECT + delete + owner alert
 - TikTok AI label ON always. Instagram Meta AI label ON + "AI-generated" in bio always.
 
-## CHARACTER CONSISTENCY — seedream v4.5 stack
+## PUBLISHING STACK
+- **Fanvue**: Official API v2025 (OAuth 2.0 PKCE) — media vault, mass messaging, scheduled posts
+- **Social (SFW)**: Publer API — Instagram, TikTok, Twitter, Reddit, Threads, YT, LinkedIn
+- **DMs**: Substy ($99/mo Premium + 8.5%) — AI handles all DMs autonomously
+- **Substy automation**: Playwright service on Hetzner VPS (DM analytics, CRM data, settings)
+
+## VLOG PIPELINE (Arc-Driven)
 ```
-Layer 1: seedream v4-5 base model
-Layer 2: IP-Adapter FaceID → face consistency via reference_images table
-Layer 3: 30-image hero reference dataset (assets/reference/hero/)
-Layer 4: Top 5 refs by setting+tier match + all hero images → every call
-< 0.85 → REJECT | < 0.85 x2 → yellow alert | < 0.80 → HARD STOP
+Brand Arc → Script (Claude Haiku) → Narration (ElevenLabs) → Start Frames (Seedream)
+→ Video Clips (Kling 3.0 i2v) → Talking Head (Kling 3.0 lipsync A2V) → Stitch (ffmpeg) → 30-60s vertical
 ```
-Image model : fal-ai/seedream-v4-5
-Video model : fal-ai/kling-video/v2/standard/image-to-video
-Setup       : node scripts/setup_reference_dataset.js (replaces train_lora.js)
+Vlogs derive from current Strategic Brand Arc. Never random.
+
+## LEARNING LOOP → OBSIDIAN SECOND BRAIN
+```
+Mistake/Pattern → learning_agent → rule_inserter.js
+  → obsidian/blondeshell-brain/Rules/R-XXX.md (audit trail)
+  → Supabase skill_rules (runtime)
+  → skills/*.md (agent pickup)
+```
+HIGH confidence: auto-insert. MEDIUM/LOW: flag for owner review.
+
+## CRM SEGMENTS
+| Segment | Criteria | PPV Price | Action |
+|---------|----------|-----------|--------|
+| Whale | Top 10% spend | $35-50 | Premium + exclusive + voice notes |
+| Active | Engaged last 7d | $10-25 | Standard |
+| New | First 7 days | $5 discount | Onboarding funnel |
+| At Risk | 7+ days silent | — | Win-back DM (max 2/cycle) |
+| Churned | 30+ days | — | Archive |
 
 ## FINANCIAL CONSTANTS
 ```python
-FANVUE_FEE=0.20 | SUBSTY_STARTER=0.15 | SUBSTY_PRO=0.10 | SUBSTY_ELITE=0.085
-THE_PIT_EXPECTED=430 | THE_PIT_HARD_CAP=500 | BREAKEVEN_SUBS=60
+FANVUE_FEE=0.20 | SUBSTY_ELITE=0.085 | SUBSTY_MONTHLY=99
+BREAKEVEN_SUBS=60
 ```
+
+## 90-DAY LAUNCH STRATEGY
+| Phase | Days | Platforms | Posts/day | Target |
+|-------|------|-----------|-----------|--------|
+| Warm Up | 1-30 | TikTok + Reddit | 2-3 | ID winning formats |
+| Scale | 31-60 | + Instagram | 4-6 | 500K-1M impressions |
+| Viral | 61-90 | All active | 6-8 | 3-10M impressions |
 
 ## RED ALERTS — STOP EVERYTHING
 | Trigger | Action |
 |---------|--------|
 | Age-ambiguous content | HARD STOP. Delete. Owner alert. |
-| Fanvue content flagged | PAUSE all posts. Login manually. |
-| Face similarity < 0.80 | STOP generation. Add new hero refs + re-run setup_reference_dataset. |
+| Fanvue content flagged | PAUSE all posts. Owner login. |
+| Face similarity < 0.80 | STOP generation. Add hero refs. |
 | API key compromised | Rotate ALL .env. Update Railway. |
 | Platform ban | Activate ConvertKit backup. |
-| Pit approaching $500 | Freeze all non-essential spend. |
 | Claude API > $150/mo | Token audit immediately. |
 
-## OUTPUT FORMAT
-```xml
-<agent_output>
-  <agent>[name]</agent><task>[task]</task><status>completed|partial|failed</status>
-  <actions_taken><action>[desc]</action></actions_taken>
-  <metrics><metric name="[n]" value="[v]" vs_target="[+/-]"/></metrics>
-  <alerts><alert level="green|yellow|red">[msg]</alert></alerts>
-  <skill_updates><update rule_id="R-XXX" file="skills/[path]"/></skill_updates>
-  <next_run>[ISO timestamp]</next_run>
-</agent_output>
-```
-
-## LEARNING LOOP
-Every mistake → log to mistakes/YYYY-MM-DD.md → learning agent writes rule → skill file updated
-→ Supabase INSERT into skill_rules → all future runs fire the rule automatically.
-
-## DM QUALIFICATION — 5W+H (REQUIRED BEFORE PPV GENERATION)
+## DM QUALIFICATION — 5W+H
 | Field | Question | Required? |
 |-------|----------|-----------|
-| WHO   | Who appears? (BlondeShell only / with elements) | Yes |
-| WHAT  | What is happening? | Yes |
-| WHERE | Location: beach/gym/home/travel/other | Yes |
-| WHEN  | Time of day / lighting / season | Yes |
-| WHY   | Mood/vibe: flirty/athletic/cozy/bold | Yes |
-| HOW   | Camera angle, outfit specifics | Optional |
+| WHO | Who appears? | Yes |
+| WHAT | What is happening? | Yes |
+| WHERE | Location | Yes (blocks generation) |
+| WHEN | Time of day / lighting | Yes |
+| WHY | Mood/vibe | Yes |
+| HOW | Camera angle, outfit | Optional |
+Timeout: 4h → "surprise me" fallback.
 
-Rules:
-- WHERE missing → Substy sends qualification question. Generation BLOCKED.
-- Timeout: 4h after first question → "surprise me" fallback with defaults.
-- All fields stored in dm_events.qualification_* columns.
-- Fulfillment states: fulfilled / failed_no_charge / failed_substitute / failed_queued
+## CRON SCHEDULE (UTC)
+| Time | Agent | Purpose |
+|------|-------|---------|
+| 0 3 | revenue_agent | CRM + revenue |
+| 0 4 | pipeline | Daily content batch |
+| 0 6 | learning_agent | Rule analysis |
+| 0 8 Mon | inspiration_engine | Weekly model scrape |
+| 0 10 | marketing_agent | Scheduling |
+| 0 12 | coo_agent | Daily digest |
+| 0 13 | trends_agent | Trend scan |
+| 0 15 MWF | vlog_pipeline | Arc-driven vlogs |
+| 0 19 | learning_agent | Evening analytics |
+| */2h | viral_check | Viral detection |
 
-*v4.0 | 2026-04-04 | Full docs: skills/ | Agents: .claude/agents/ | State: claude_progress.txt + Supabase*
+## API KEYS
+Active: ANTHROPIC, FAL (Seedream v4.5 + Kling v3 i2v + Kling v3 lipsync), SUPABASE_*, FANVUE_*, PUBLER, RESEND, ELEVENLABS
+Not yet: SUBSTY (no public API — manual or Playwright), MANYCHAT, CONVERTKIT, OPENAI, TWITTER_COOKIES_B64 (all via Publer)
+
+## WHEN STUCK ON API
+Load from vault first (APIs/*.md). If unclear:
+- Fanvue → `api.fanvue.com/docs` → Ask AI
+- Publer → `publer.com/docs` → Ask AI
+- COO digest flags any unresolved API issues
+
+*v5.2 | 2026-04-18 | Obsidian vault is source of truth | State: claude_progress.txt + Supabase*

@@ -27,3 +27,4 @@ experiments/
 
 # Generated output artifacts (may contain signed URLs)
 outputs/
+output/

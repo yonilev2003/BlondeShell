@@ -1,681 +1,202 @@
 # BlondeShell — Session Progress
-## Date: 2026-04-09 | Status: FULL PIPELINE OPERATIONAL
+## Date: 2026-04-18 | Status: v5.2 COMPLETE — Sprint 1 DONE — Ready for Night Session
 
 ---
 
-## STACK (CONFIRMED & WORKING)
-
-| Component | Value |
-|-----------|-------|
-| Image generation | fal-ai/bytedance/seedream/v4.5/edit via fal.ai |
-| Video generation | fal-ai/kling-video/v3/standard/image-to-video |
-| Storage | Supabase Storage — bucket: `content` |
-| Database | Supabase — tables: content_items, agent_logs, agent_runs, weekly_plans, coo_digests, fanvue_tokens, learning_reports, trends_reports |
-| Scheduling (social) | Publer (lib/publer.js) — WORKING |
-| Fanvue posting | lib/fanvue.js — WORKING (images only; video API returns 500) |
-| Fanvue auth | OAuth 2.0 PKCE — tokens in Supabase fanvue_tokens table |
-| Autonomous agents | 6 agents on Railway cron — DEPLOYED |
-| Email alerts | Resend — WORKING (to yonilev2003@gmail.com only until domain verified) |
-| Auth (fal.ai) | FAL_KEY in .env |
-| Auth (Publer) | Publer_API + PUBLER_WORKSPACE_ID in .env |
-| Auth (Fanvue) | FANVUE_CLIENT_ID + FANVUE_CLIENT_SECRET in .env + tokens in Supabase |
+## CURRENT BRANCH
+`claude/push-to-github-PjFnX` (not merged to main yet)
+Last commit: `a511bcd` — Sprint 1 test scripts (voice + fanvue upload/api verify)
 
 ---
 
-## AGENTS (ALL BUILT & DEPLOYED ON RAILWAY)
+## v5.2 STATE (as of 2026-04-18 EOD)
 
-| Agent | File | Schedule | Status |
-|-------|------|----------|--------|
-| Strategy | agents/strategy_agent.js | Monthly (1st, 7am ET) | ✓ built — blocked on Anthropic credits |
-| COO | agents/coo_agent.js | Daily 8am ET | ✓ running + email alerts wired |
-| Marketing | agents/marketing_agent.js | Daily 6am ET | ✓ running + Fanvue image posts integrated |
-| Learning | agents/learning_agent.js | Daily 2am ET | ✓ running |
-| Trends | agents/trends_agent.js | Daily 9am ET | ✓ running |
-| Plan Update | agents/plan_update_agent.js | Sunday 10pm ET | ✓ running |
+### ✅ COMPLETED THIS SESSION
 
-Shared infra: `lib/agent_runner.js` — loadSystemPrompt, runAgent, logToSupabase, alertOwner, logMistake
+**Architecture upgrades:**
+- `lib/ab_testing.js` — A/B test engine (5 caption variations, 30min stagger, pick winner after 2h)
+- `lib/hook_database.js` — hook performance tracking by platform + type
+- `agents/tool_eval_agent.js` — monthly tool/stack evaluation → Obsidian report
+- `agents/coo_agent.js` v2 — week-over-week, variety score, platform health, learning quality, daily email always sent
+- `webhook/server.js` — viral check every 30min (was 2h), tool_eval + pipeline crons added
+- `lib/pipeline.js` — integrates A/B testing for T1 TikTok/Instagram
 
----
+**Hedra → Kling v3 lipsync refactor:**
+- `lib/hedra.js` DELETED
+- `lib/lipsync.js` NEW — uses `fal-ai/kling-video/lipsync/audio-to-video`
+- `generateTalkingHead({ startImageUrl, audioUrl, prompt, duration })` helper
+- `lib/vlog.js` refactored to use Kling lipsync
+- CLAUDE.md updated — no more HEDRA in stack
 
-## FANVUE INTEGRATION (COMPLETE — images only)
+**Obsidian vault (source of truth for APIs):**
+- `obsidian/blondeshell-brain/APIs/publer.md` — 303 lines
+- `obsidian/blondeshell-brain/APIs/fanvue.md` — 254 lines
+- `obsidian/blondeshell-brain/APIs/fal.md` — 239 lines (Seedream + Kling i2v + Kling lipsync)
+- `obsidian/blondeshell-brain/APIs/_index.md` — index
+- Agents load via `import { loadAPIReference } from './lib/obsidian.js'`
 
-### Auth flow
-- One-time PKCE auth: `npm run fanvue:auth` → browser → Railway catches callback → saves tokens to Supabase
-- Railway route: `GET /fanvue-callback` in webhook/server.js
-- Tokens: `fanvue_tokens` table (id='singleton', access_token, refresh_token)
-- Scopes: `read:self read:media read:post read:fan read:insights write:media write:post offline_access offline`
+**Scripts (new):**
+- `scripts/launch_readiness.mjs` → `npm run readiness` — full go/no-go check (41/41 passing)
+- `scripts/check_bios.mjs` → `npm run check:bios` — bio consistency
+- `scripts/check_fanvue_media.mjs` — diagnostic for media UUID/list
+- `scripts/fanvue_check_tokens.js` — verify tokens + /creators/me
+- `scripts/test_voice.mjs` → `npm run test:voice` — 3 ElevenLabs clips
+- `scripts/test_fanvue_upload.mjs` → `npm run test:fanvue` — E2E multipart upload
+- `scripts/test_fanvue_api.mjs` → `npm run test:fanvue-api` — API + token refresh
+- `scripts/night_session_batch.mjs` → `npm run schedule:night` — 12 images + QA + schedule Tue/Wed
+- `scripts/schedule_monday_v2.mjs` → `npm run schedule:monday` — Monday posts
 
-### lib/fanvue.js exports
-- `uploadMediaFromUrl(publicUrl, name)` — POST /media/uploads with url → PATCH complete → poll GET /media/{uuid} until status="ready" (max 2 min)
-  - Note: media status cycles through "error" during processing — ignore, only stop on "ready" or timeout
-- `getAccessToken()` — refresh_token grant via Basic Auth, saves new token to Supabase
-- `createPost({ mediaUuids, caption, isFree, audience })` — POST /posts
-- `scheduleFanvuePost({ mediaUuids, caption, scheduledAt, isFree, audience })`
+**Supabase migrations:**
+- `supabase/migrations/20260418000001_ab_testing.sql` — ab_test_groups + hook_performance
+- `supabase/migrations/20260418000002_brand_arc_seed.sql` — Brand Arc #1 + annual_milestones 2026
+- `supabase/migrations/v52_combined.sql` — idempotent catch-all (13 tables + seeds) — RUN VIA SQL EDITOR ✅
 
-### Confirmed Fanvue API field names
-- Caption field: `text` (not content, description, body, caption)
-- Media field: `mediaUuids` (camelCase array)
-- Audience: `"followers-and-subscribers"` or `"subscribers"`
-- isFree: `isFree` (camelCase)
-- Token exchange: Basic Auth header `Authorization: Basic base64(clientId:clientSecret)`
-- Video URL-import: PATCH returns 500 — Fanvue doesn't support video URL-import
-- Video binary upload: no signed URL endpoint found — skip videos on Fanvue for now
-
-### Marketing agent Fanvue integration
-- After Publer scheduling, fires Fanvue posts async (non-blocking Promise.all, fire-and-forget)
-- T1 images → audience="followers-and-subscribers", isFree=true
-- T2 images → audience="subscribers", isFree=false
-- Videos → skipped (Fanvue API limitation)
-
----
-
-## PLATFORM QA (qa_platform_agent.js) — UPDATED RULES
-
-| Platform | Approved | Rejected |
-|----------|----------|---------|
-| Instagram | Athletic wear, swimwear/bikini, beach, midriff, skin | Nipples, genitalia, sexual acts, explicit nudity |
-| TikTok | Athletic wear, swimwear/bikini, beach, midriff, skin | Nipples, genitalia, sexual acts, explicit nudity |
-| Twitter/X | All T1 + T2 | Auto-approve |
-| Fanvue | All tiers | Auto-approve |
-
-Previous rules were too strict (rejecting beach/swimwear). Now aligned with actual platform policies.
+**Bug fixes:**
+- `lib/publer.js` — fixed result parser (media is direct array, not `{ media: [...] }`)
+- `lib/rule_inserter.js` — `glob.sync` instead of named `globSync` (compat with glob v8)
+- `scripts/launch_readiness.mjs` — `select('*')` for fanvue_tokens (avoids column-not-found)
 
 ---
 
-## EMAIL ALERTS (Resend)
+## ✅ SPRINT 1 RESULTS (Today)
 
-- RESEND_API_KEY: `re_h1NETCPP_...` — confirmed working
-- RESEND_FROM: `onboarding@resend.dev` (temporary — see below)
-- ALERT_EMAILS: theblondeshell@proton.me, yonilev2003@gmail.com
-- ⚠️ Limitation: `onboarding@resend.dev` can only send to account owner (yonilev2003@gmail.com)
-- Fix: Verify blondeshell.ai domain at resend.com/domains → change RESEND_FROM to alerts@blondeshell.ai
+**All 6 steps passed from user's Mac terminal:**
+1. `npm run readiness` → 41/41 ✅
+2. `npm run test:fal` → 3 images generated ✅
+3. `npm run test:voice` → 3 ElevenLabs clips (social/dm/vlog) ✅
+4. `npm run test:fanvue-api` → 15 posts + 15 media visible ✅
+   `npm run test:fanvue` → upload works, mediaUuid `54b418bb-50ee-4ccc-93e5-e3609d046c94` ✅
+5. `npm run schedule:monday` → **6/6 posts scheduled** for Monday (3 gym/home/beach × 2 platforms)
+   - Publer IG: `69d763474d92c20853b2f6bd` (ig_business via FB Page)
+   - Publer TikTok: `69d76503f9cf2bb87988ea09`
+6. `npm run check:bios` → Publer returns empty bio data (API limitation) — user confirmed bios set manually ✅
 
----
-
-## INFRASTRUCTURE
-
-### npm scripts (package.json)
-- `npm run generate` — all 4 batches
-- `npm run generate:beach/gym/street/home` — per-setting
-- `npm run qa` — interactive QA CLI
-- `npm run fanvue:auth` — one-time OAuth setup (re-run if refresh_token expires)
-- `npm run agents:coo/marketing/trends/learning` — run agents manually
-
-### Railway deployment
-- Project: blondeshell (ID: 45a0d512-fbd9-4d08-bfca-01e53bcb1f6f)
-- URL: https://hopeful-freedom-production-554a.up.railway.app
-- Health: GET /health
-- Webhook: POST /fanvue
-- Fanvue OAuth callback: GET /fanvue-callback
-- Crons: in-process node-cron in webhook/server.js
-
-### lib/
-- `lib/generate_image.js` — fal.ai Seedream v4.5, REFERENCE_SETS, 529 retry
-- `lib/generate_video.js` — Kling v3, motion prompts per setting, 529 retry
-- `lib/supabase_content.js` — saveImage, saveVideo, updateQAStatus, getPendingQA
-- `lib/publer.js` — schedulePost, verifyPostLive, getPlatformIds (bulk format)
-- `lib/fanvue.js` — uploadMediaFromUrl, getAccessToken, createPost, scheduleFanvuePost
-- `lib/agent_runner.js` — shared agent base
+**Publer scheduled posts (all have job IDs, verified in Publer dashboard):**
+- GYM: TT `2026-04-20T21:00Z` + IG `2026-04-20T19:00Z`
+- HOME: TT `2026-04-20T14:00Z` + IG `2026-04-20T15:00Z`
+- BEACH: TT `2026-04-21T02:00Z` + IG `2026-04-20T23:00Z`
 
 ---
 
-## PUBLER STATUS
+## 🔑 ENV STATE (confirmed working from user's .env)
 
-- Base URL: `https://app.publer.com/api/v1`
-- Auth: `Authorization: Bearer-API {Publer_API}`
-- Workspace ID: `69d761ddf9cf2bb87988e12f`
-- Accounts:
-  - instagram (`69d763474d92c20853b2f6bd`) — ig_business — ✓ connected
-  - tiktok (`69d76503f9cf2bb87988ea09`) — tiktok — ✓ connected
-  - twitter (`69d7698ff9cf2bb87988f76b`) — twitter — ✓ connected
-- Scheduling: WORKING — bulk format `POST /posts/schedule` confirmed
+✅ ANTHROPIC_API_KEY, FAL_KEY (NEW key, old had host allowlist), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+✅ Publer_API, PUBLER_WORKSPACE_ID
+✅ FANVUE_CLIENT_ID, FANVUE_CLIENT_SECRET (tokens in Supabase fanvue_tokens, re-auth'd today)
+✅ ELEVENLABS_API_KEY (Voice ID: `briGJOLAce4pTnmxMbbi`)
+✅ RESEND_API_KEY, ALERT_EMAILS
 
----
-
-## SUPABASE TABLES
-
-| Table | Purpose |
-|-------|---------|
-| content_items | Generated images/videos with QA status |
-| agent_logs | All agent run logs (agent, task, status, notes) |
-| agent_runs | Agent output + alerts (agent, status, output, alerts) |
-| weekly_plans | 7-day content plans generated by plan_update_agent |
-| coo_digests | Daily COO summaries |
-| learning_reports | Learning agent recommendations |
-| trends_reports | Trends agent findings |
-| fanvue_tokens | OAuth tokens (id='singleton') |
-| subscribers | Fanvue subscriber tracking |
-| dm_events | DM pipeline events |
+❌ Not set (intentional):
+- SUBSTY_SERVICE_KEY — no public API, manual or Playwright
+- OPENAI_API_KEY — not needed (Claude handles all)
+- TWITTER_COOKIES_B64 — not needed (via Publer)
+- HEDRA_API_KEY — REMOVED (Kling lipsync replaces it)
 
 ---
 
-## CONTENT RESULTS (2026-04-09)
+## 🎯 NEXT STEPS (for new session)
 
-| Batch | Images | Videos |
-|-------|--------|--------|
-| beach | 5/10 | 5/5 |
-| gym | 6/6 | 3/3 |
-| street | 9/9 | 9/9 |
-| home | 1/4 | 0/2 |
+### IMMEDIATE (when user resumes):
+1. **Run night session batch**: `npm run schedule:night`
+   - Generates 12 images (4 settings × 3 moods)
+   - QA gate all 12
+   - Uploads to Publer media library
+   - Schedules Tue + Wed across TikTok + Instagram
+   - With captions from `SETTINGS_MOODS` array in the script
 
-**Total:** ~35 images + ~20 videos — all in Supabase Storage
-**QA approved:** 40 items — all permanent Supabase URLs
+2. **Delete stale Publer post**: there's 1 scheduled post with AI-refusal text:
+   - `"I can't write content promoting..."` — delete via Publer dashboard → Scheduled
+
+### Sprint 2 (Apr 19) — tomorrow:
+- Review Monday posts going live (first real posts!)
+- Consider nsfwjs integration to reduce Claude vision QA cost
+- Generate 18 images + 6 videos overnight
+
+### Sprint 3 (Apr 20):
+- Deploy webhook server to Railway (if not already)
+- Activate all crons (currently defined in webhook/server.js):
+  - `0 3` revenue_agent
+  - `0 4` pipeline
+  - `0 6` learning_agent
+  - `0 8 Mon` inspiration_engine
+  - `0 10` marketing_agent
+  - `0 11 1` strategy_agent
+  - `0 12 1` tool_eval_agent (monthly)
+  - `0 12` coo_agent
+  - `0 13` trends_agent
+  - `0 15 MWF` vlog_pipeline
+  - `0 19` learning_agent evening
+  - `0 2 Mon` plan_update_agent
+  - `*/30` viral_check (30min, new in v5.2)
+
+### Sprint 6 (Apr 23) — Pre-Launch QA:
+- Verify all bios consistent (manually, since Publer doesn't return bio data)
+- Full system review
+
+### LAUNCH DAY (Apr 24):
+- GO LIVE, first auto-posts
+- $150-200 on shoutouts from gaming/meme pages
 
 ---
 
-## KNOWN ISSUES / NEXT ACTIONS
+## 📝 IMPORTANT CONTEXT FOR NEXT SESSION
 
-1. **Anthropic credits** — strategy_agent blocked. Top up: console.anthropic.com
-2. **Resend domain** — verify blondeshell.ai at resend.com/domains to enable alerts to both addresses
-3. **Fanvue video** — no working upload path found. Revisit when Fanvue releases video upload API docs.
-4. **Home batch** — 3/4 images Forbidden. Retry: `npm run generate:home`
-5. **Beach batch** — 5/10 images. Top up: `npm run generate:beach -- --images=5`
+**Sandbox limitation**: Claude Code sandbox environment blocks outbound requests to fal.ai, Fanvue, Publer APIs (403 "Host not in allowlist"). ALL real API tests must be run from user's Mac terminal, not from Claude Code.
 
-## RESOLVED TODAY (2026-04-09)
-- ✓ Fanvue OAuth PKCE — tokens in Supabase, lib/fanvue.js fully working
-- ✓ All 6 agents built and deployed on Railway
-- ✓ Fanvue image posts integrated into marketing_agent (async, non-blocking)
-- ✓ Platform QA rules loosened — beach/swimwear/athletic approved for instagram/tiktok
-- ✓ RESEND_API_KEY wired up correctly — email confirmed delivered
-- ✓ Marketing agent end-to-end: generate → QA → Publer → Fanvue confirmed working
+**Supabase migration drift**: Remote has ghost migrations `20260411102344/5` not in local git. Fixed by using `supabase/migrations/v52_combined.sql` (idempotent CREATE TABLE IF NOT EXISTS) pasted into SQL Editor instead of `supabase db push`.
+
+**Publer validity warning**: `validity: instagram=false, tiktok=false` on media uploads is a pre-check warning, not blocker. Posts scheduled fine.
+
+**Fanvue tokens storage**: stored in Supabase `fanvue_tokens` table (id='singleton'), NOT in .env. Auth script: `npm run fanvue:auth` opens browser → Railway webhook catches callback → saves to Supabase.
+
+**Key files to reference in new session:**
+- `CLAUDE.md` v5.2 — thin overview (references Obsidian vault)
+- `obsidian/blondeshell-brain/APIs/*.md` — full API references
+- `package.json` — all npm scripts (38 total after v5.2)
+- `/root/.claude/plans/soft-snuggling-lynx.md` — full v5.2 plan + Year 1 roadmap
 
 ---
 
-## ENV VARIABLES REQUIRED
+## 🧪 KEY TEST RESULTS FROM TODAY
 
+**Fanvue multipart upload E2E (from user terminal):**
 ```
-ANTHROPIC_API_KEY
-FAL_KEY
-SUPABASE_URL
-SUPABASE_SERVICE_ROLE_KEY
-SUPABASE_ANON_KEY
-Publer_API
-PUBLER_WORKSPACE_ID=69d761ddf9cf2bb87988e12f
-FANVUE_CLIENT_ID=80da64ae-491c-494d-85c7-8a6233b893cd
-FANVUE_CLIENT_SECRET=<in .env>
-RESEND_API_KEY=re_h1NETCPP_...
-RESEND_FROM=onboarding@resend.dev   ← change to alerts@blondeshell.ai after domain verification
-ALERT_EMAILS=theblondeshell@proton.me,yonilev2003@gmail.com
+[fanvue] Session created — uploadId: 54b418bb-50ee-4ccc-9...
+[fanvue] Uploading chunk 1/1 (7004KB)
+[fanvue] Processing — uuid: 54b418bb-50ee-4ccc-93e5-e3609d046c94 status: processing
+[fanvue] Media status: ready
+✅ Upload complete! mediaUuid: 54b418bb-50ee-4ccc-93e5-e3609d046c94
 ```
 
-## Session: 2026-04-09
-Status: FULL PIPELINE OPERATIONAL
-generate → QA (vision, 0.95 avg) → Publer scheduling → Fanvue image posts → 6 autonomous agents on Railway cron
+**Fanvue API visibility:**
+- `/posts?limit=5` → 15 posts visible
+- `/media?limit=3` → 15 items visible
+- Token refresh flow working
+
+**ffmpeg on user's Mac:** v8.1 installed ✓
 
 ---
 
-## Session: 2026-04-10
-Status: PUBLER QUEUE FILLED — Apr 12–15 scheduled
+## 🚨 KNOWN ISSUES / TODOs
 
-### COMPLETED THIS SESSION
+1. **Instagram validity=false** — Publer returns this warning but posts are scheduled. Need to verify on Apr 20 that posts actually publish. If they fail, may need to adjust image aspect ratio / size in `lib/image_convert.js`.
 
-**Block B — lib/fanvue.js verified**
-- All exports confirmed present and working
-- `getAccessToken()` dry-tested: JWT returned (1305 chars, eyJhbGci...)
-- Token flow: refresh_token grant via Basic Auth → saves to Supabase fanvue_tokens
-- `uploadMedia(filePath)` — uploads local file to Supabase storage, then URL-imports to Fanvue
-- `uploadMediaFromUrl(url)` — 3-phase (init → complete → poll ready), max 2 min
-- `createPost()` / `scheduleFanvuePost()` — confirmed present
+2. **Stale failed post in Publer** — `"I can't write content..."` — user needs to delete manually.
 
-**scripts/fill_publer_queue.js — BUILT & EXECUTED**
-- Schedules Apr 12–15 rolling window (IL = UTC+3 applied)
-- Pulls approved content_items (29 T1 images, 29 T1+T2 images, 19 T1 videos)
-- Content deduplication: no item reused across slots
-- Idempotent: re-run safe — skips already-queued slots
-- A/B test per day embedded in caption_style / ab_test_variable columns
+3. **Bio API gap** — Publer doesn't return bio content. Future: integrate Instagram Graph API + TikTok API directly for bio checks.
 
-**scheduled_posts table — CREATED in Supabase**
-- Migration: create_scheduled_posts
-- Columns: post_id, platform, post_type, scheduled_at, content_id, caption_style, ab_test_variable, publer_job_id, created_at
+4. **nsfwjs not integrated** — Sprint 2 item, reduces Claude vision QA cost. Low priority, Claude vision works.
 
-**lib/publer.js — updated**
-- schedulePost() now accepts optional `postType` param (overrides auto-detection)
-- Enables Reels (`reel`) and Stories (`story`) alongside existing photo/video/status
-
-**Queue results — 36/36 scheduled, 0 skipped**
-| Platform / Type     | Posts | Times (IL)               | A/B variable        |
-|---------------------|-------|--------------------------|---------------------|
-| Instagram Feed      | 4     | 07:00 daily              | caption_style       |
-| Instagram Reels     | 4     | 19:00 daily              | caption_style       |
-| Instagram Stories   | 4     | 12:00 daily (≤15s clips) | caption_style       |
-| TikTok video        | 8     | 11:00 + 19:00 daily      | visual_hook         |
-| Twitter/X status    | 16    | 09:00,12:00,18:00,21:00  | visual_hook         |
-| **Total**           | **36**|                          |                     |
-
-A/B schedule:
-- Apr 12: caption_style = rate_my_form
-- Apr 13: caption_style = gaming_reference
-- Apr 14: visual_hook = low_angle
-- Apr 15: visual_hook = side_profile
-
-### npm scripts added
-- `npm run publer:fill-queue` — scripts/fill_publer_queue.js
-
-### SUPABASE TABLE ADDED
-| Table | Purpose |
-|-------|---------|
-| scheduled_posts | Publer queue log — platform, post_type, scheduled_at, content_id, caption_style, ab_test_variable, publer_job_id |
+5. **deepface not integrated** — Python-only, no good JS equivalent. Using Claude vision for face similarity instead.
 
 ---
 
-## Session: 2026-04-10 (Window 1 — continued)
-Status: completed
+## 💰 COST TRACKING
 
-### TASKS_DONE
-- lib/fanvue.js — price param added to createPost() (dollars→cents, min $3.00, isFree:false required)
-- scripts/fill_publer_queue.js — built + 36 posts scheduled Apr 12-15 (confirmed above)
-- scheduled_posts table — created in Supabase
-- C2PA signing pipeline — lib/c2pa_sign.js + scripts/sign_c2pa.js built
-  - signAndUpload(sourceUrl): download → sign → upload to Supabase Storage content/signed/
-  - Uses createTestSigner() if no C2PA_PRIVATE_KEY/C2PA_CERT_CHAIN set
-  - MP4 limitation: c2pa-node needs file path for video; MP4s get /signed/ path label only
-- All 16 pre-C2PA content items re-signed, qa_status reset, re-ran QA batch → 36/36 passed
-- qa_decisions + custom_requests tables created in Supabase
-- scheduled_posts extended: qa_status, tier_upgraded, rerouted_to columns added
-- QA batch pipeline: scripts/qa_batch_check.js — Anthropic Batch API (~50% cost savings)
-- 4 QA agent files: agents/qa/tiktok.md, instagram.md, twitter.md, fanvue.md
-- fanvue_test_post.js fixed: GET /posts?limit=1
-- RAILWAY_PUBLIC_URL confirmed present in .env
-- Twitter reply bot: scripts/twitter_morning_scan.py (twikit 2.x async) + JS launcher updated
-  - Python 3.12 via Homebrew: /opt/homebrew/bin/python3.12
-  - twikit 2.3.3 installed on Python 3.12
-  - ClientTransaction monkey-patched (Twitter JS regex broken in 2.3.3)
-  - Cookie-first auth, RateLimiter (20/hr, 2s delay), --dry-run mode
-
-### BLOCKED
-- Twitter bot dry run: auth_token in cookies.json is expired → 404 on search
-- Needs fresh auth_token + ct0 from active x.com browser session logged in as imblondeshell
-- Handed off to Window 3
-
-### NEXT_PRIORITY (Window 3)
-1. Get fresh cookies from x.com browser session → update cookies.json
-2. Re-run: node scripts/twitter_morning_scan.js --dry-run "gym workout"
-3. Confirm Railway cron: scripts/twitter_morning_scan.js daily at 04:00 UTC (07:00 IL)
-
-### PRODUCTION TODO (future sessions)
-- C2PA production certs: set C2PA_PRIVATE_KEY + C2PA_CERT_CHAIN in .env (currently test signer)
-- C2PA MP4 fix: write MP4 to temp file before signing in lib/c2pa_sign.js
-- Resend domain: verify blondeshell.ai → change RESEND_FROM to alerts@blondeshell.ai
+Today's spend: ~$0.10 (3 fal.ai images + ElevenLabs credits + Claude)
+Monthly budget (Month 1): ~$575-675
+Revenue target Month 1: $1,200-2,300 net
 
 ---
 
-## Session: 2026-04-10 (Window 3)
-Status: completed
-
-### TASKS_DONE
-- QA subagents confirmed: agents/qa/tiktok.md, instagram.md, twitter.md, fanvue.md
-- qa_decisions table confirmed in Supabase, pipeline wired
-- skills/virality_log.md created
-- custom_requests table created in Supabase
-- scripts/qa_batch_check.js — Anthropic Batch API, ~50% cost saving
-- Supabase migrations:
-  - trends + post_analytics columns
-  - twitter_reply_queue (row_type column)
-  - post_analytics (viral_flagged column + index)
-- Twitter reply bot fully operational:
-  - scripts/twitter_morning_scan.py — twikit 2.x async, ClientTransaction monkey-patched
-  - scripts/twitter_morning_scan.js — launcher updated to /opt/homebrew/bin/python3.11
-  - 20 target accounts seeded in twitter_reply_queue (row_type='target')
-  - 10 reply templates — skills/twitter/reply_templates.md
-  - Cookie loading: flat dict + CSRF header manually set; supports Cookie-Editor array format
-  - TWITTER_COOKIES_B64 env var support wired (Railway deploy path)
-  - Dry-run confirmed working: fetches live @NICKMERCS timeline via user.get_tweets()
-  - Uses get_user_by_screen_name() + get_tweets() — avoids broken search_tweet endpoint
-- webhook/server.js — 2 new crons added:
-  - 0 4 * * * → runScript('twitter_morning_scan') (07:00 IL)
-  - 0 */2 * * * → viral check (post_analytics: impressions>10K in last 6h → fires marketing+trends agents)
-- runScript() helper added to webhook/server.js
-
-### CONFIRMED WORKING
-- twikit login: auth_token + ct0 from browser session (x.com, Cookie-Editor export)
-- Timeline fetch: client.get_user_by_screen_name('NICKMERCS').get_tweets() returns live tweets
-- Supabase writes: row_type constraint live, viral_flagged column live
-
-### NEXT_PRIORITY
-- Owner runs: base64 -i cookies.json | tr -d '\n' → paste as TWITTER_COOKIES_B64 in Railway
-- Then Railway will auto-decode on each deploy and twikit will authenticate without local file
-
-### NEW ENV VARS NEEDED (Railway)
-- TWITTER_COOKIES_B64 — base64-encoded cookies.json (auth_token + ct0)
-- TWITTER_USERNAME, TWITTER_EMAIL, TWITTER_PASSWORD — fallback for cookie refresh
-
----
-
-## Session: 2026-04-10 (Window 3 — CLOSE)
-Status: completed
-
-### FINAL STATE
-- TWITTER_COOKIES_B64 set in Railway via CLI — confirmed in railway variables
-- Railway redeployed — env var live
-- All crons active in webhook/server.js:
-  - 04:00 UTC → twitter_morning_scan.py (07:00 IL)
-  - every 2h → viral check (post_analytics impressions >10K → fires marketing+trends)
-  - 06:00 UTC → learning_agent
-  - 10:00 UTC → marketing_agent
-  - 12:00 UTC → coo_agent
-  - 13:00 UTC → trends_agent
-  - 19:00 UTC → learning_agent (evening)
-
-### NEXT_PRIORITY
-1. fal.ai auto-recharge setup (owner manual — console.fal.ai)
-2. After fal.ai topped up:
-   - node scripts/generate_cycle2.js --images-only
-   - npm run qa -- --auto-approve
-   - npm run publer:fill-queue-cycle2
-3. MP4 C2PA fix (Week 2, not urgent)
-4. Twitter bot first run at 07:00 IL tomorrow — monitor Railway logs
-
-### HANDOFF
-All systems ready for Day 8 launch at 09:00 IL (Apr 11).
-36 posts scheduled Apr 12-15. Agents running. Twitter bot armed.
-
----
-
-## Session: 2026-04-10 (Cycle 2 Prep)
-Status: COMPLETED — Cycle 2 fully scheduled 36/36
-
-### AGENTS BUILT THIS SESSION
-- `.claude/agents/trends.md` — Trend Scout agent v1.0 (daily 06:00 IL, analytical only)
-- `.claude/agents/learning.md` → v2.0: post_analytics table, winning_variable tagging, batch brief
-- `.claude/agents/marketing.md` → v2.0: visual_hook enforcement, twitter_reply_queue, algospeak, T2 linking, trends check
-
-### SUPABASE MIGRATIONS (4 applied)
-| Migration | Table | Status |
-|-----------|-------|--------|
-| 20260410000001 | trends | ✓ |
-| 20260410000002 | post_analytics | ✓ |
-| 20260410000003 | twitter_reply_queue | ✓ |
-| 20260410000004 | qa_decisions (columns added) | ✓ |
-
-### CYCLE 2 CONTENT (Apr 16–19)
-- Generated: 30 images + 10 videos (batch_id: cycle2_*)
-  - Themes: gym_selfie, gaming_setup, beach_golden, workout_form, squat_side, leg_press, gaming_night, beach_slowmo
-- QA: 49 items auto-approved
-- Publer: 36/36 slots scheduled (timestamp skip bug fixed in both fill scripts)
-- A/B test:
-  - Apr 16: sound = Stellar Blade OST
-  - Apr 17: sound = trends_agent_pick (runtime)
-  - Apr 18: caption = form_breakdown (edutainment)
-  - Apr 19: caption = gaming_crossover_levelup
-
-### CRON UPDATES (webhook/server.js)
-- Added: `0 19 * * *` → learning_agent evening analytics (22:00 IL)
-- Added: `0 4  * * *` → twitter_morning_scan.py (07:00 IL) [user-added]
-- Added: `0 */2 * * *` → viral check — TikTok impressions >10K → fire marketing+trends [user-added]
-- Added: `runScript()` helper for Python scripts [user-added]
-- Deployed to Railway
-
-### SKILLS UPDATED
-- `skills/virality_log.md` — Batch #0 Prior added (2026 algorithm research hypothesis)
-
-### SCRIPTS ADDED
-- `scripts/generate_cycle2.js` — Cycle 2 content generator (15 images + 10 videos, 4 themes each)
-- `scripts/fill_publer_queue_cycle2.js` — Cycle 2 queue filler (Apr 16–19, A/B per day)
-
-### LIB CHANGES
-- `lib/generate_video.js` — added `customPrompt` param (non-breaking)
-
-### BUG FIXED
-- `fill_publer_queue.js` + `fill_publer_queue_cycle2.js`: timestamp normalization in skip logic
-  - Root cause: Supabase returns `+00:00` timezone, constructed key used `.000Z` format
-  - Fix: `new Date(r.scheduled_at).toISOString()` normalises both to UTC Z format
-
-### KNOWN ISSUES
-- C2PA video signing: MP4s upload unsigned — `c2pa-node` memory buffer supports JPEG/PNG only
-  - Fix: use `c2patool` CLI for MP4 temp-file signing (Week 2, non-urgent)
-  - Workaround: manual TikTok AI label toggle per video post
-- C2PA production certs: still using test signer (self-signed)
-  - Fix: set C2PA_PRIVATE_KEY + C2PA_CERT_CHAIN in .env when CAI cert obtained
-
-### NEXT_PRIORITY
-1. Monitor Cycle 1 (Apr 12–15) — check post_analytics fills with real data
-2. After Apr 15: Learning Agent runs Batch #1 real analysis → updates virality_log.md
-3. C2PA MP4 fix (temp-file path in lib/c2pa_sign.js)
-4. C2PA production cert (CAI/DigiCert — needed for TikTok auto-label)
-5. Resend domain verify → alerts@blondeshell.ai
-
----
-
-## Session: 2026-04-11
-Status: BATCH INFRASTRUCTURE + DB COMPLETE
-
-### TASKS COMPLETED
-
-**TASK 1 — TikTok Story Auto-Post**
-- Added `tiktok_story_1` + `tiktok_story_2` slots to `fill_publer_queue.js` SLOTS array
-- Story 1: tiktok, postType=story, utcHour=8:05, maxDuration=15, aiLabel=true (paired with tiktok_1)
-- Story 2: tiktok, postType=story, utcHour=16:05, maxDuration=15, aiLabel=true (paired with tiktok_2)
-- Publer already supports `story` postType (lib/publer.js updated last session)
-- Each day now posts: 2 TikTok videos + 2 TikTok Stories (same video pool, 15s clips)
-
-**TASK 2 — Learning Agent Confidence Routing**
-- Added `## CONFIDENCE-BASED ACTION ROUTING` section to `.claude/agents/learning.md`
-- HIGH ≥80%: auto-execute + COO report after
-- MEDIUM 50-79%: email owner, 6h timeout → escalate to COO
-- LOW <50%: log as hypothesis in COO digest only
-- Email template included, escalation SQL included
-- post_analytics columns: confidence_level, action_taken, owner_approved (see Task 6)
-
-**TASK 3 — Viral Trigger Protocol**
-- Added `## VIRAL TRIGGER PROTOCOL` section to `.claude/agents/learning.md`
-- Trigger: 10K impressions in 6 hours
-- Step 1: tag winning_variable in post_analytics
-- Step 2: INSERT into agent_alerts → marketing_agent (replicate x3)
-- Step 3: COO red alert fires
-- Step 4: INSERT into agent_alerts → trends_agent (check rideable sound/trend)
-- Runs via existing 2h viral cron in webhook/server.js (already polling post_analytics)
-
-**TASK 4 — Reply Notification System**
-- Added `## REPLY NOTIFICATION SYSTEM` section to `.claude/agents/marketing.md`
-- Monitor comments for 60 min post-publish
-- >3 comments in first 10 min → Resend email to owner: "🔥 [Platform] post getting traction — go reply NOW"
-- Owner window: 60 min from post time (agent stays silent)
-- After 60 min: agent drafts replies via Claude (flirty, no CTAs)
-- Troll/negative comments → log as skipped, never engage
-
-**TASK 5 — collab_prospects table**
-- Supabase migration: `create_collab_prospects` — SUCCESS
-- Columns: id, platform, username, subscriber_count, niche (TEXT[]), status, draft_message, contacted_at, notes, created_at
-
-**TASK 6 — post_analytics confidence columns**
-- Supabase migration: `add_confidence_columns_post_analytics` — SUCCESS
-- Added: confidence_level TEXT, action_taken TEXT, owner_approved BOOLEAN
-- Verified: all 3 columns confirmed present in information_schema
-
-**TASK 7 — --dates flag for fill_publer_queue.js**
-- Added `parseDatesArg()` function — format: `Apr16-19` → ['2026-04-16'...'2026-04-19']
-- `const DATES` now dynamic: uses --dates arg or defaults to Apr 12-15
-- `getAlreadyQueued()` now uses `DATES[0]` / `DATES[DATES.length-1]` (no hardcoded dates)
-- AB_CONFIG extended with Cycle 2 dates (Apr 16-19): sound/stellar_blade, sound/trends_agent_pick, form_breakdown, gaming_crossover_levelup
-- AB_DEFAULT fallback for unknown dates
-- Usage: `node scripts/fill_publer_queue.js --dates Apr16-19`
-
-**TASK 8 — Collab Prospect Research**
-- Background agent running — web search + Supabase inserts
-- Will populate collab_prospects table with 10 fitness+gaming micro-creators (500-5K subs)
-- Draft messages generated per creator, status='prospect'
-- Results pending — see next session or check collab_prospects table
-
-**TASK 9 — batch_brief.js**
-- Created: `scripts/batch_brief.js`
-- Queries post_analytics for the target date (--date flag or today)
-- Output: { date, posts_published, top_performer, a_b_winner, recommended_adjustments[], confidence_level }
-- Inserts brief into agent_alerts (target: coo_agent, type: batch_brief)
-- Usage: `node scripts/batch_brief.js [--date 2026-04-15]`
-
-### SUPABASE MIGRATIONS (this session)
-| Migration | Table | Status |
-|-----------|-------|--------|
-| create_collab_prospects | collab_prospects | ✓ |
-| add_confidence_columns_post_analytics | post_analytics | ✓ |
-
-### FILES MODIFIED
-- `scripts/fill_publer_queue.js` — TikTok Stories + --dates flag + Cycle 2 AB_CONFIG
-- `.claude/agents/learning.md` → v3.0 — confidence routing + viral trigger
-- `.claude/agents/marketing.md` → v3.0 — reply notification system
-
-### FILES CREATED
-- `scripts/batch_brief.js` — end-of-day batch summary for Learning Agent
-
-### NEXT_PRIORITY
-1. Monitor Task 8 agent output — review collab_prospects table for 10 inserted rows
-2. First real analytics will arrive Apr 12 after 09:00 IL when Cycle 1 posts go live
-3. After any post hits 10K+ impressions in 6h — viral trigger fires automatically (cron already active)
-4. Run: `node scripts/fill_publer_queue.js --dates Apr16-19` when ready (Cycle 2 queue fill)
-5. Resend domain verify → alerts@blondeshell.ai (unblocks traction alerts to both addresses)
-
----
-
-## Session: 2026-04-11 (Day 8 Close)
-Status: ALL TASKS COMPLETE — SYSTEM FULLY OPERATIONAL
-
-### ALL TASKS COMPLETED THIS SESSION
-
-| Task | Status | Details |
-|------|--------|---------|
-| TikTok Story auto-post | ✅ | tiktok_story_1 + tiktok_story_2 slots added to fill_publer_queue.js (08:05 + 16:05 UTC, paired with each video post) |
-| Learning Agent confidence routing | ✅ | learning.md v3.0 — HIGH auto-executes, MEDIUM emails owner (6h timeout), LOW digest-only |
-| Viral trigger protocol | ✅ | learning.md v3.0 — 10K impressions/6h fires: tag winning_variable → marketing agent (replicate x3) → COO alert → trends agent |
-| Reply notification system | ✅ | marketing.md v3.0 — >3 comments/10min → owner Resend email, 60min owner window, agent fallback |
-| collab_prospects table | ✅ | Supabase migration applied — 10 fitness+gaming micro-creators inserted (status=prospect) |
-| post_analytics confidence columns | ✅ | confidence_level TEXT, action_taken TEXT, owner_approved BOOLEAN — all confirmed in DB |
-| --dates flag for queue filler | ✅ | fill_publer_queue.js accepts --dates Apr16-19, dynamic date range, Cycle 2 AB_CONFIG baked in |
-| Collab prospect research | ✅ | 10 creators in collab_prospects table, draft messages generated, status=prospect, DO NOT SEND YET |
-| scripts/batch_brief.js | ✅ | End-of-day summary script — queries post_analytics, outputs JSON brief, inserts into agent_alerts |
-| TikTok Stories Apr 12-15 queued | ✅ | fill_publer_queue.js --activate backfilled 8 TikTok story slots (2/day × 4 days) |
-| Fanvue token re-auth | ✅ | OAuth PKCE re-run — tokens refreshed at 10:36 UTC in fanvue_tokens table |
-| Publer → Fanvue flow verified | ✅ | Confirmed: Publer fetches media at schedule time via media_urls; all 80 slots already have media embedded |
-| Fanvue backlog posted | ✅ | 24/24 subscriber posts scheduled Apr 12-19 (3/day × 8 days, 09:00/14:00/20:00 UTC) |
-| marketing_agent.js Fanvue fix | ✅ | isFree: false, audience: 'subscribers' — all future daily posts are subscriber-only |
-| TikTok sound scan | ✅ | Top 3 sounds inserted into trends table (Run the World peak/9, Loving Life Again rising/8, Yoga rising/8) |
-| Git repo initialized + pushed | ✅ | github.com/yonilev2003/BlondeShell — .gitignore fixed (node_modules, cookies.json, experiments/, outputs/ excluded) |
-
-### CURRENT SYSTEM STATE
-- **Publer queue**: 80 slots scheduled Apr 12-19 (44 for Cycle 1, 36 for Cycle 2)
-- **Fanvue queue**: 24 subscriber posts scheduled Apr 12-19 (3/day)
-- **Fanvue auth**: tokens fresh as of 10:36 UTC today
-- **Agents**: all 6 running on Railway cron — confirmed healthy
-- **Trends table**: 3 TikTok sounds loaded (Run the World expires Apr 14 — use NOW)
-- **collab_prospects**: 10 prospects loaded, awaiting owner review before any outreach
-- **Git**: github.com/yonilev2003/BlondeShell — committed + pushed
-
-### SUPABASE MIGRATIONS (this session)
-| Migration | Table | Status |
-|-----------|-------|--------|
-| create_collab_prospects | collab_prospects | ✓ |
-| add_confidence_columns_post_analytics | post_analytics (confidence_level, action_taken, owner_approved) | ✓ |
-
-### FILES MODIFIED / CREATED
-| File | Change |
-|------|--------|
-| scripts/fill_publer_queue.js | TikTok story slots + --dates flag + Cycle 2 AB_CONFIG + dynamic date range |
-| .claude/agents/learning.md | v3.0 — confidence routing + viral trigger protocol |
-| .claude/agents/marketing.md | v3.0 — reply notification system |
-| agents/marketing_agent.js | Fanvue: isFree→false, audience→'subscribers' |
-| scripts/post_backlog_to_fanvue.js | NEW — Fanvue backlog scheduler (24/24 executed) |
-| scripts/batch_brief.js | NEW — end-of-day batch summary for Learning Agent |
-| .gitignore | Fixed — node_modules/, cookies.json, experiments/, outputs/ all excluded |
-
-### KNOWN ISSUES (carry forward)
-- C2PA video signing: MP4s unsigned — c2pa-node memory buffer supports JPEG/PNG only (Week 2, non-urgent)
-- C2PA production certs: still using test signer (self-signed) — get CAI/DigiCert cert
-- Resend domain: verify blondeshell.ai → change RESEND_FROM to alerts@blondeshell.ai
-- Fanvue video uploads: no working API path — revisit when Fanvue releases video API docs
-- Twitter cookies: monitor validity — re-export from x.com if bot auth fails
-- git global identity: run git config --global user.name/email to clear committer warning
-
----
-
-## NEXT_PRIORITY — Day 9
-
-1. **Queue Cycle 2** (FIRST ACTION):
-   ```bash
-   node scripts/fill_publer_queue.js --dates Apr16-19
-   ```
-   Fills Publer with Apr 16-19 slots. TikTok stories included automatically.
-
-2. **Monitor Cycle 1 launch** (Apr 12 09:00 IL):
-   - Check Railway logs: `railway logs --lines 50`
-   - Verify first posts go live on TikTok + Twitter + Instagram
-   - Watch post_analytics for first real impressions data
-
-3. **Run the World — use NOW** (expires Apr 14):
-   - Sound is at PEAK, 83K UGC videos, +9,750/day
-   - Generate 1-2 TikTok clips using this sound immediately
-
-4. **Review collab_prospects** (owner decision):
-   - `SELECT username, platform, subscriber_count, draft_message FROM collab_prospects ORDER BY subscriber_count DESC;`
-   - Approve/reject before any outreach
-
-5. **Resend domain verify**:
-   - Go to resend.com/domains → verify blondeshell.ai → update RESEND_FROM in Railway
-   - Unblocks traction alerts to theblondeshell@proton.me
-
----
-
-## Session: 2026-04-12
-Status: AGENT INFRASTRUCTURE FIXED — ALL SYSTEMS HEALTHY
-
-### FIXES COMPLETED THIS SESSION
-
-| Issue | Root Cause | Fix | Status |
-|-------|-----------|-----|--------|
-| strategy_agent never ran | Cron fires 1st of month only — deployed after Apr 1 | Run manually; fixed wrong column names (`agent_name`/`run_at` → `agent`/`created_at`) in getAgentRunHistory() | ✅ |
-| plan_update_agent "down" | coo_agent health check used 24h window for ALL agents (weekly/monthly agents always failed) | Per-agent cadence thresholds: daily=26h, weekly=200h, monthly=800h | ✅ |
-| coo_agent false alarms | Same 24h threshold flagging weekly+monthly agents as down every day | AGENT_CADENCE_HOURS map added to coo_agent.js | ✅ |
-| Fanvue Unauthorized | OAuth tokens expired — all 3 Fanvue uploads failed Apr 11 | Re-ran `npm run fanvue:auth` → PKCE flow opened in browser → tokens refreshed | ✅ |
-| Publer posts "missing" Apr 12 | All 11 slots already queued in scheduled_posts — queue was fine | Confirmed via fill_publer_queue.js --dates Apr12-12: 0 new, 11 skipped | ✅ |
-
-### FILES MODIFIED
-| File | Change |
-|------|--------|
-| agents/strategy_agent.js | Fixed getAgentRunHistory() column names: agent_name→agent, run_at→created_at |
-| agents/coo_agent.js | Added AGENT_CADENCE_HOURS map; getAgentHealth() now uses per-agent threshold |
-
-### MANUAL RUNS EXECUTED
-| Agent | Output | Status |
-|-------|--------|--------|
-| strategy_agent | May 2026 plan upserted: 85 subs / $650 / 18 PPV / 2500 followers | ✅ completed |
-| plan_update_agent | Week of Apr 13 plan: "Beach + Golden Hour (Week 1 Kickoff)" — 7 days, 20 posts | ✅ completed |
-| coo_agent | Apr 12 digest: revenue critical ($0/$62.50), growth critical (0/10 subs), agents now healthy | ✅ completed |
-
-### STRATEGY AGENT FINDINGS
-- April targets ($250 / 25 subs) are 75% below annual Month 1 goal — too conservative
-- May plan: $650 revenue / 85 subs / 18 PPV / 2,500 followers (2.6x jump)
-- Annual plan update flagged: recommend $600–800/mo baseline for months 1–2
-- Beach content = 38% of 108 approved items — hero asset confirmed
-
-### PLAN UPDATE AGENT — WEEK OF APR 13
-- Theme: Beach + Golden Hour (Week 1 Kickoff)
-- Mon: beach T1 warm | Tue: gym T2 confident | Wed: street T1 playful
-- Thu: gym T1 confident | Fri: beach T1 warm | Sat: home T2 edgy | Sun: travel T1 neutral
-- 20 total posts across IG, TikTok, Twitter, Reddit, YouTube, Threads
-
-### KNOWN ISSUES (carry forward)
-- Fanvue auth: confirm tokens landed after browser approval (run `node scripts/fanvue_check_tokens.js`)
-- Resend domain: verify blondeshell.ai → RESEND_FROM → alerts@blondeshell.ai
-- C2PA video signing: MP4s unsigned (Week 2, non-urgent)
-- Twitter cookies: monitor validity — re-export from x.com if bot fails
-
----
-
-## NEXT_PRIORITY — Apr 13
-
-1. **Weekly Review** — check Cycle 1 first-day analytics:
-   - Railway logs: `railway logs --lines 100`
-   - post_analytics: any impressions/CTR from Apr 12 posts?
-   - Publer: did all 11 slots fire correctly?
-
-2. **BlondeShell 2.0 Vision Planning Session**:
-   - Review strategy_agent May plan + annual plan recalibration
-   - Define Phase 2 acceleration path: PPV/DM funnel activation
-   - Resend domain + email alerts to both addresses
-   - collab_prospects outreach decision
-
-3. **Confirm Fanvue re-auth** completed:
-   - `node scripts/fanvue_check_tokens.js`
-   - If tokens present: run test post to confirm uploads working again
-
-4. **Resend domain verify** (unblocks owner alerts):
-   - resend.com/domains → verify blondeshell.ai → update Railway RESEND_FROM
-
+*Session ended 2026-04-18. Resume: `npm run readiness` to confirm state, then `npm run schedule:night` for night batch.*
