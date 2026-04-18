@@ -45,6 +45,9 @@
     "schedule:monday": "node scripts/schedule_monday_v2.mjs",
     "schedule:night": "node scripts/night_session_batch.mjs",
     "test:fal": "node scripts/test_fal_generate.mjs",
+    "test:voice": "node scripts/test_voice.mjs",
+    "test:fanvue": "node scripts/test_fanvue_upload.mjs",
+    "test:fanvue-api": "node scripts/test_fanvue_api.mjs",
     "check:bios": "node scripts/check_bios.mjs"
   },
   "dependencies": {

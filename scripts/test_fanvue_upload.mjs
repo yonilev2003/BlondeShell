@@ -1,106 +1,57 @@
+#!/usr/bin/env node
+/**
+ * E2E Fanvue multipart upload test
+ *
+ * Flow:
+ *   1. Use /tmp image from test:fal, or fall back to public hero ref URL
+ *   2. Upload via Fanvue 3-phase multipart → get mediaUuid
+ *   3. Does NOT publish — just verifies upload pipeline works
+ *
+ * Usage: node scripts/test_fanvue_upload.mjs [path-to-image]
+ */
+
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { existsSync, readFileSync } from 'fs';
+import { uploadMediaFromUrl, uploadMediaBuffer } from '../lib/fanvue.js';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const HERO_REF = 'https://nznvfseyrpzfkwjxowgd.supabase.co/storage/v1/object/public/Hero_Dataset/closeup_T1_face_hero.png';
 
-const API_BASE = 'https://api.fanvue.com';
-const TOKEN_URL = 'https://auth.fanvue.com/oauth2/token';
+const imagePath = process.argv[2] ?? '/tmp/blondeshell_test_1_gym_mirror_selfie.png';
 
-async function getTokens() {
-  const { data, error } = await supabase
-    .from('fanvue_tokens')
-    .select('access_token, refresh_token')
-    .eq('id', 'singleton')
-    .single();
-  if (error || !data?.access_token) throw new Error('No Fanvue tokens — run: npm run fanvue:auth');
-  return data;
-}
+console.log('\n━━━ Fanvue Multipart Upload Test ━━━\n');
 
-async function refreshTokens(refreshToken) {
-  const basicAuth = Buffer.from(
-    `${process.env.FANVUE_CLIENT_ID}:${process.env.FANVUE_CLIENT_SECRET}`
-  ).toString('base64');
+try {
+  let mediaUuid;
 
-  const res = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${basicAuth}`,
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }),
-  });
+  if (existsSync(imagePath)) {
+    console.log(`Uploading local file: ${imagePath}`);
+    const buffer = readFileSync(imagePath);
+    console.log(`   Size: ${(buffer.length / 1024).toFixed(0)} KB`);
 
-  if (!res.ok) {
-    throw new Error(`Token refresh failed (${res.status}): ${await res.text()}`);
+    const filename = imagePath.split('/').pop();
+    const res = await uploadMediaBuffer(buffer, filename, 'image/png');
+    mediaUuid = res?.mediaUuid ?? res?.uuid ?? res?.id ?? res;
+  } else {
+    console.log(`No local file at ${imagePath}, using hero ref URL`);
+    console.log(`   ${HERO_REF}`);
+    const res = await uploadMediaFromUrl(HERO_REF, 'test_hero_ref.png');
+    mediaUuid = res?.mediaUuid ?? res?.uuid ?? res?.id ?? res;
   }
 
-  const { access_token, refresh_token } = await res.json();
-  await supabase.from('fanvue_tokens').upsert({
-    id: 'singleton',
-    access_token,
-    refresh_token: refresh_token || refreshToken,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'id' });
-
-  return access_token;
-}
-
-async function tryEndpoint(path, accessToken) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const body = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, body };
-}
-
-console.log('\n━━━ Fanvue API Test ━━━\n');
-
-// Step 1: Tokens
-console.log('1. Checking Fanvue tokens...');
-const tokens = await getTokens();
-let accessToken = tokens.access_token;
-console.log(`   ✅ Token loaded (${accessToken.slice(0, 20)}...)\n`);
-
-// Step 2: Test a known working endpoint (/posts)
-console.log('2. Testing /posts endpoint...');
-let result = await tryEndpoint('/posts?limit=5', accessToken);
-
-if (result.status === 401) {
-  console.log('   Token expired, refreshing...');
-  try {
-    accessToken = await refreshTokens(tokens.refresh_token);
-    console.log('   ✅ Token refreshed');
-    result = await tryEndpoint('/posts?limit=5', accessToken);
-  } catch (err) {
-    console.error(`   ❌ Refresh failed: ${err.message}`);
-    console.error('   Run: npm run fanvue:auth');
-    process.exit(1);
+  if (!mediaUuid || typeof mediaUuid !== 'string') {
+    throw new Error(`Upload returned unexpected value: ${JSON.stringify(mediaUuid).slice(0, 200)}`);
   }
-}
 
-if (!result.ok) {
-  console.error(`   ❌ /posts returned ${result.status}:`);
-  console.error(`   ${JSON.stringify(result.body).slice(0, 200)}`);
+  console.log('\n✅ Upload complete!');
+  console.log(`   mediaUuid: ${mediaUuid}\n`);
+  console.log('▶️  Verify in Fanvue Dashboard → Media tab');
+  console.log('    If it appears there → multipart pipeline is fully functional.\n');
+
+  process.exit(0);
+} catch (err) {
+  console.error(`\n❌ Upload failed: ${err.message}\n`);
+  if (err.message.includes('401') || err.message.includes('403')) {
+    console.error('   → Token may be expired. Run: npm run fanvue:auth');
+  }
   process.exit(1);
 }
-
-const posts = result.body.data || result.body.posts || result.body || [];
-const count = Array.isArray(posts) ? posts.length : (result.body.total || 0);
-console.log(`   ✅ /posts works — ${count} posts visible\n`);
-
-// Step 3: Test /media endpoint (for uploads)
-console.log('3. Testing /media endpoint...');
-const mediaResult = await tryEndpoint('/media?limit=3', accessToken);
-if (mediaResult.ok) {
-  const media = mediaResult.body.data || mediaResult.body || [];
-  console.log(`   ✅ /media works — ${Array.isArray(media) ? media.length : 0} items\n`);
-} else {
-  console.log(`   ⚠️  /media returned ${mediaResult.status} (may need scope)\n`);
-}
-
-console.log('━━━ Summary ━━━');
-console.log('✅ Fanvue API works — token valid, endpoints accessible');
-console.log('ℹ️  Ready for real uploads via lib/fanvue.js\n');
