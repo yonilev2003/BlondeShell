@@ -9,7 +9,42 @@ Working branch: `claude/push-to-github-PjFnX` (per session guidance).
 
 ## FIRST ACTION IN MORNING SESSION (Apr 19)
 1. Read `MORNING_QUESTIONS.md` — Part A verification + locked Part B decisions.
-2. Start Sprint 2 day work — plan in this file below.
+2. Execute the Sprint 2 task list below.
+
+---
+
+## ✅ SPRINT 2 TASK LIST — Apr 19 (locked, owner-approved)
+
+### 🌅 Morning (~30 min)
+1. `git pull origin main` — sync latest (includes EOD night-session fixes).
+2. Read `MORNING_QUESTIONS.md` → Part A verification checklist.
+3. Check Publer → Published: did the Monday posts go live? (IG + TikTok)
+4. Investigate **A6**: why only 3 Monday posts visible in Publer (expected 6, per Sprint 1 schedule gym/home/beach × 2 platforms).
+
+### 💻 Day work (~3 hours) — nsfwjs integration (B1)
+5. `npm i nsfwjs @tensorflow/tfjs-node` (add to `package.json`).
+6. Create `lib/nsfw_classifier.js` with `classifyImage(buffer) → { class, prob }` and T1/T2/T3 gating thresholds.
+7. Wire into `lib/qa_gate.js` — replace Claude-vision NSFW call only (keep Claude for identity + brand fit).
+8. Test: re-run QA on the 8 rejected images from `/tmp/night_session/` — compare verdicts, sanity-check thresholds.
+9. (Optional) re-run `npm run schedule:night` with the tightened prompts + new NSFW gate to top up scheduled content.
+
+### 🌙 Night batch (~$3-5, B3 + B4)
+10. Generate **18 fresh images** using tightened prompts (6 settings × 3 moods OR 6 × time-of-day).
+11. Generate **6 short videos** via Kling v3 i2v from approved start frames (5s each, `fal-ai/kling-video/v3/standard/image-to-video`).
+12. Generate **1× 30s vlog** E2E (B3 — pipeline validation):
+    ```
+    node -e "import('./lib/vlog.js').then(m => m.generateVlog({ arcId: 'arc_001', duration: 30 }))"
+    ```
+13. Schedule all approved content Thu-Sat across TikTok + Instagram + Twitter.
+
+### 🔒 Locked decisions (from owner, Apr 18 EOD)
+- **Voice:** keep ElevenLabs `briGJOLAce4pTnmxMbbi` — no action.
+- **Twitter:** now active (different account), included in night batch.
+- **nsfwjs:** do day-of-Sprint-2 (saves ~$18/mo).
+- **Vlog test:** yes (E2E validation).
+- **Batch size:** full (images + videos + vlog).
+
+### Launch: Apr 24 (5 days away).
 
 ---
 
