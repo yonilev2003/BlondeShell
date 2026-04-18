@@ -293,47 +293,55 @@ refresh_token: ${refresh_token?.slice(0, 20)}...</pre>
   }
 });
 
-// ── Agent cron schedule v5.1 (all times UTC) ────────────────────────────────
-cron.schedule('0 3  * * *', () => runAgent('revenue_agent'));
-cron.schedule('0 6  * * *', () => runAgent('learning_agent'));
-cron.schedule('0 10 * * *', () => runAgent('marketing_agent'));
-cron.schedule('0 11 1 * *', () => runAgent('strategy_agent'));
-cron.schedule('0 12 * * *', () => runAgent('coo_agent'));
-cron.schedule('0 13 * * *', () => runAgent('trends_agent'));
-cron.schedule('0 19 * * *', () => runAgent('learning_agent'));
-cron.schedule('0 2  * * 1', () => runAgent('plan_update_agent'));
+// ── Agent cron schedule v5.2 (all times UTC) ────────────────────────────────
+cron.schedule('0 3  * * *',   () => runAgent('revenue_agent'));
+cron.schedule('0 4  * * *',   () => runAgent('pipeline'));
+cron.schedule('0 6  * * *',   () => runAgent('learning_agent'));
+cron.schedule('0 8  * * 1',   () => runAgent('inspiration_engine'));
+cron.schedule('0 10 * * *',   () => runAgent('marketing_agent'));
+cron.schedule('0 11 1 * *',   () => runAgent('strategy_agent'));
+cron.schedule('0 12 1 * *',   () => runAgent('tool_eval_agent'));  // monthly, after strategy
+cron.schedule('0 12 * * *',   () => runAgent('coo_agent'));
+cron.schedule('0 13 * * *',   () => runAgent('trends_agent'));
+cron.schedule('0 15 * * 1,3,5', () => runAgent('vlog_pipeline'));
+cron.schedule('0 19 * * *',   () => runAgent('learning_agent'));
+cron.schedule('0 2  * * 1',   () => runAgent('plan_update_agent'));
 
-// Every 2h — viral post checker: fires marketing + trends agents if any TikTok post >10K views in last 6h
-cron.schedule('0 */2 * * *', async () => {
-  console.log('[viral_check] scanning post_analytics for viral posts...');
+// Every 30min for first 6h after posting — viral post checker
+// Thresholds: 5K/2h = warming up, 10K/2h = viral, 50K/2h = breakout
+cron.schedule('*/30 * * * *', async () => {
   try {
     const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-    const { data: viralPosts, error } = await supabase
+    const { data: posts, error } = await supabase
       .from('post_analytics')
       .select('id, post_id, platform, impressions, posted_at')
-      .eq('platform', 'tiktok')
       .eq('viral_flagged', false)
-      .gte('impressions', 10000)
+      .gte('impressions', 5000)
       .gte('posted_at', sixHoursAgo);
 
     if (error) { console.error('[viral_check] query error:', error.message); return; }
-    if (!viralPosts || viralPosts.length === 0) { console.log('[viral_check] no viral posts'); return; }
+    if (!posts?.length) return;
 
-    for (const post of viralPosts) {
-      console.log(`[viral_check] 🔥 VIRAL: ${post.post_id} — ${post.impressions} impressions`);
+    for (const post of posts) {
+      const level = post.impressions >= 50000 ? 'breakout' : post.impressions >= 10000 ? 'viral' : 'warming';
+      console.log(`[viral_check] 🔥 ${level.toUpperCase()}: ${post.post_id} — ${post.impressions} impressions`);
 
-      // Mark so we don't re-fire
       await supabase.from('post_analytics').update({ viral_flagged: true }).eq('id', post.id);
-
-      // Log alert
       await logAgentAction('viral_check', 'viral_post_detected', 'completed',
-        `Post ${post.post_id} hit ${post.impressions} impressions in <6h. Firing marketing + trends agents.`);
+        `${level}: ${post.post_id} hit ${post.impressions} impressions. Platform: ${post.platform}`);
 
-      // Fire escalation agents with viral context
-      process.env.VIRAL_CONTEXT = '1';
+      process.env.VIRAL_CONTEXT = level;
       process.env.VIRAL_POST_ID = post.post_id;
+
       runAgent('marketing_agent');
       runAgent('trends_agent');
+
+      if (level === 'breakout') {
+        // Breakout: fire ab_testing spin-offs + alert
+        console.log(`[viral_check] 🚀 BREAKOUT detected — escalating to ab_testing`);
+        process.env.VIRAL_SPINOFFS = '5';
+        runAgent('marketing_agent');
+      }
     }
   } catch (err) {
     console.error('[viral_check] unexpected error:', err.message);
