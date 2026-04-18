@@ -2,7 +2,109 @@
 -- v5.2 Combined Migration — paste into Supabase SQL Editor
 -- Idempotent: safe to re-run. Use this instead of `supabase db push` if
 -- local/remote migration history is out of sync.
+-- Includes: v5.1 tables (storyline_arcs, etc.) + v5.2 A/B tables + seeds.
 -- ============================================================================
+
+-- ─── v5.1 base tables (required for seed below) ─────────────────────────────
+
+CREATE TABLE IF NOT EXISTS storyline_arcs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  start_date DATE,
+  end_date DATE,
+  locations TEXT[],
+  themes TEXT[],
+  status TEXT DEFAULT 'planned' CHECK (status IN ('planned', 'active', 'completed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS annual_milestones (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  month INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  target_subs INTEGER,
+  target_revenue NUMERIC,
+  target_impressions BIGINT,
+  actual_subs INTEGER,
+  actual_revenue NUMERIC,
+  actual_impressions BIGINT,
+  status TEXT DEFAULT 'pending',
+  UNIQUE(month, year)
+);
+
+CREATE TABLE IF NOT EXISTS subscriber_segments (
+  fanvue_id TEXT PRIMARY KEY,
+  segment TEXT CHECK (segment IN ('whale', 'active', 'new', 'at_risk', 'churned')),
+  recommended_ppv_price INTEGER DEFAULT 10,
+  onboarding_step INTEGER DEFAULT 0,
+  win_back_attempts INTEGER DEFAULT 0,
+  last_segment_update TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS post_performance_curves (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_item_id UUID,
+  platform TEXT NOT NULL,
+  hour_1 JSONB, hour_6 JSONB, hour_24 JSONB, hour_48 JSONB, day_7 JSONB,
+  hook_type TEXT, visual_style TEXT, cta_type TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS inspiration_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source_url TEXT, platform TEXT, pose_description TEXT,
+  outfit TEXT, setting TEXT, color_palette TEXT, mood TEXT,
+  engagement_score NUMERIC,
+  scraped_at TIMESTAMPTZ DEFAULT NOW(),
+  used_count INTEGER DEFAULT 0
+);
+
+-- ─── COO/Fanvue tables (referenced by agents, safe if already exist) ────────
+
+CREATE TABLE IF NOT EXISTS content_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL CHECK (type IN ('image', 'video')),
+  setting TEXT, tier TEXT, mood TEXT,
+  url TEXT, prompt TEXT, batch_id TEXT,
+  source_image_id UUID, duration_seconds INTEGER,
+  platforms TEXT[],
+  qa_status TEXT DEFAULT 'pending' CHECK (qa_status IN ('pending', 'approved', 'rejected')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS fanvue_tokens (
+  id TEXT PRIMARY KEY DEFAULT 'singleton',
+  access_token TEXT, refresh_token TEXT, expires_at TIMESTAMPTZ,
+  pkce_verifier TEXT, pkce_state TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS fanvue_earnings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date DATE NOT NULL,
+  amount NUMERIC NOT NULL,
+  source TEXT CHECK (source IN ('subscription', 'ppv', 'tip', 'other')),
+  subscriber_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_fanvue_earnings_date ON fanvue_earnings (date DESC);
+
+CREATE TABLE IF NOT EXISTS subscriber_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type TEXT CHECK (event_type IN ('subscribe', 'unsubscribe', 'follow', 'unfollow', 'dm')),
+  platform TEXT, subscriber_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_subscriber_events_created ON subscriber_events (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS coo_digests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date DATE NOT NULL UNIQUE,
+  digest TEXT, revenue_snapshot JSONB, growth_metrics JSONB,
+  requires_action BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- ─── A/B Testing tables ─────────────────────────────────────────────────────
 
