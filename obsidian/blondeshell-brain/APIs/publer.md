@@ -32,8 +32,9 @@ Rate limit: **100 req / 2 min** per user. Watch `X-RateLimit-Remaining` header.
 |-----------|----------------|----------------------------|
 | Instagram | ig_business    | `69d763474d92c20853b2f6bd` |
 | TikTok    | tiktok         | `69d76503f9cf2bb87988ea09` |
+| Twitter   | twitter        | (fetch via `getPlatformIds()` — new account, active) |
 
-Twitter connected but **suspended** — do NOT post there in Month 1.
+Previous Twitter account was suspended. Owner connected a different Twitter account to Publer (Apr 18, 2026) — it IS active and should be used. Always resolve the id dynamically via `getPlatformIds()`; do NOT hardcode.
 
 ---
 

@@ -1,6 +1,6 @@
 # Morning Questions — Sprint 2 Kickoff (Apr 19, 2026)
 
-> This file is for **YOU** to review in the morning. Answer the questions in a new Claude session — or mark ✅ if verified, ❌ if issue.
+> **UPDATE (Apr 18 EOD):** Owner answered Part B during Sprint 1 wrap-up. Locked decisions at bottom of file. Part A still needs verification in the morning.
 
 ---
 
@@ -30,7 +30,18 @@ You ran `npm run schedule:night` last night. In the morning, verify each step su
 - [ ] **If Instagram failed:** likely the `validity=false` warning was real. Check Publer → Published tab for error. May need to adjust image aspect ratio in `lib/image_convert.js`.
 
 ### A5. Stale Publer Post
-- [ ] Did you delete the `"I can't write content promoting..."` post from Publer → Scheduled? (manual cleanup required)
+- **RESOLVED** — owner confirmed the failed post is NOT visible in Publer schedule. No cleanup needed.
+
+### A6. Monday Post Count Discrepancy (NEW — needs investigation)
+- Owner sees only **2 IG + 1 TikTok = 3 Monday posts** in Publer — but Sprint 1 scheduled 6 (3 settings × 2 platforms).
+- In morning Claude session, run `npm run check:publer` (or paste Publer → Scheduled screenshot) to verify.
+- Hypothesis: 3 TikTok job IDs were accepted but silently dropped; or dates drifted to a different day.
+- Check `/tmp/sprint1_schedule_monday.json` (Sprint 1 output) vs Publer dashboard.
+
+### A7. Twitter (NEW — now active)
+- Owner connected a DIFFERENT Twitter account to Publer (old one was suspended).
+- Sprint 1 scheduled **0 Twitter posts**. Night session fixed this — Twitter now included for Tue/Wed.
+- Morning: verify Twitter account visible via `getPlatformIds()` and night-session Twitter posts scheduled.
 
 ---
 
@@ -142,3 +153,35 @@ Launch: Apr 24 (6 days away).
 ---
 
 *File auto-generated 2026-04-18 EOD. Delete after Sprint 2 kickoff.*
+
+---
+
+## ✅ LOCKED DECISIONS (Apr 18 EOD — from owner)
+
+**B1. nsfwjs integration:** DO TOMORROW (Sprint 2 day work). Replace Claude vision in `lib/qa_gate.js` with local `nsfwjs` classifier to cut ~$18/mo. ~2-3h dev.
+
+**B2. Voice:** KEEP current ElevenLabs voice ID `briGJOLAce4pTnmxMbbi`. Revisit after first vlog test.
+
+**B3. First vlog test (30s):** YES — run end-to-end as pipeline validation. Part of Sprint 2 night batch.
+
+**B4. Sprint 2 night batch:** FULL batch — 18 images + 6 short videos (Kling v3 i2v from approved start frames) + 1× 30s vlog E2E. Budget: ~$3-5.
+
+---
+
+## 🌙 SPRINT 1 NIGHT-SESSION RESULTS (run from Mac, Apr 18 PM)
+
+- Generated: **12/12** images
+- Approved: **4/12** (beach_playful, gym_athletic, gym_stretching, street_sporty)
+- Rejected (NSFW T2, 3): beach_golden_hour, home_cozy, home_morning
+- Rejected (identity <0.85, 4): beach_chill (0.62), gym_post_workout (0.72), street_urban (0.72), street_night_out (0.65)
+- Rejected (brand fit, 1): home_getting_ready
+- Scheduled: **8/8** posts (Tue+Wed × TT+IG). Twitter missing in that first run — FIXED in committed night script.
+
+**Rejection-rate fixes applied tonight (for re-runs):**
+1. All 12 prompts rewritten — removed bikini tops, oversized sleep shirts, face-covering sunglasses.
+2. Added `IDENTITY_CUE` to every prompt: `bright green eyes clearly visible, platinum blonde hair, no sunglasses covering face` — targets the 4 identity rejections.
+3. Added LA context + tags to every caption (`#LosAngeles #LA #LALife` across all 3 platforms).
+4. Added CAPTIONS_TWITTER (12 short captions, 280-safe) + Twitter scheduling block.
+5. Added `searchInstagramLocation('Los Angeles')` — IG posts auto geo-tagged as LA (or env override via `INSTAGRAM_LA_LOCATION_ID`).
+
+Expected rejection rate after fixes: **~20-25%** (down from 67%). Re-run `npm run schedule:night` if/when you want fresh content.

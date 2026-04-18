@@ -19,53 +19,75 @@ import { createClient } from '@supabase/supabase-js';
 import { generateImage } from '../lib/generate_image.js';
 import { runFullQA } from '../lib/qa_gate.js';
 import { convertToJpeg } from '../lib/image_convert.js';
-import { getPlatformIds, uploadMediaFromUrl as publerUploadMedia, schedulePost } from '../lib/publer.js';
+import { getPlatformIds, uploadMediaFromUrl as publerUploadMedia, schedulePost, searchInstagramLocation } from '../lib/publer.js';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+const IDENTITY_CUE = 'bright green eyes clearly visible, platinum blonde hair, no sunglasses covering face';
+
 const SETTINGS_MOODS = [
-  { setting: 'beach', mood: 'golden_hour', prompt: 'BlondeShell on Santa Monica beach at golden hour, white bikini top and denim shorts, hair flowing, candid walk towards camera. Warm sunset, ocean waves.' },
-  { setting: 'beach', mood: 'playful', prompt: 'BlondeShell splashing in shallow waves at a sunny LA beach, laughing, wearing a pastel pink bikini. Bright midday sun, clear blue water, carefree energy.' },
-  { setting: 'beach', mood: 'chill', prompt: 'BlondeShell sitting on a beach towel reading her phone, oversized sunglasses, iced coffee beside her, wearing a sage green bikini. Relaxed, afternoon light.' },
-  { setting: 'gym', mood: 'athletic', prompt: 'BlondeShell doing a kettlebell workout in a modern gym, matching lavender sports bra and leggings, focused expression, morning light through windows.' },
-  { setting: 'gym', mood: 'post_workout', prompt: 'BlondeShell taking a mirror selfie after a workout, slightly sweaty, matching pastel pink sports bra and shorts, phone covering half her face. Gym locker room.' },
-  { setting: 'gym', mood: 'stretching', prompt: 'BlondeShell doing a yoga stretch on a mat in a bright studio, wearing a white crop top and black leggings, serene expression. Morning golden light.' },
-  { setting: 'home', mood: 'cozy', prompt: 'BlondeShell in her LA apartment, oversized hoodie and cotton shorts, curled up on a couch with a blanket, watching something on her laptop. Fairy lights, warm tones.' },
-  { setting: 'home', mood: 'morning', prompt: 'BlondeShell standing by her kitchen counter in the morning, oversized sleep shirt, holding a matcha latte, soft golden window light, minimal aesthetic apartment.' },
-  { setting: 'home', mood: 'getting_ready', prompt: 'BlondeShell sitting at her vanity mirror getting ready, applying lipgloss, wearing a cute cami top, fairy lights around the mirror. Evening prep vibes.' },
-  { setting: 'street', mood: 'urban', prompt: 'BlondeShell walking down Melrose Ave in LA, wearing a cropped white tee and vintage jeans, sunglasses pushed up on head, carrying a coffee. Golden afternoon light.' },
-  { setting: 'street', mood: 'night_out', prompt: 'BlondeShell leaning against a wall outside an LA cafe at dusk, wearing a black mini dress and white sneakers, neon signs reflecting. Cool evening light.' },
-  { setting: 'street', mood: 'sporty', prompt: 'BlondeShell on a morning jog on a tree-lined LA street, wearing a matching blue running set, AirPods in, natural smile. Bright morning, athletic energy.' },
+  { setting: 'beach', mood: 'golden_hour', prompt: `BlondeShell on Santa Monica beach at golden hour, wearing a linen beach coverup over a modest one-piece swimsuit with denim shorts, hair flowing in ocean breeze, candid walk towards camera smiling at friends. ${IDENTITY_CUE}. Warm sunset, ocean waves, carefree LA summer vibe.` },
+  { setting: 'beach', mood: 'playful', prompt: `BlondeShell laughing with friends on a sunny LA beach, wearing athletic swim shorts and a fitted rash guard top, holding a volleyball. ${IDENTITY_CUE}. Bright midday sun, clear blue water, genuine joy, active beach day.` },
+  { setting: 'beach', mood: 'chill', prompt: `BlondeShell sitting on a beach towel reading a paperback book, oversized straw sun hat, iced matcha beside her, wearing a casual cotton beach dress over swimwear. ${IDENTITY_CUE}. Relaxed afternoon light, Santa Monica vibe.` },
+  { setting: 'gym', mood: 'athletic', prompt: `BlondeShell doing a kettlebell workout in a modern LA gym, wearing matching lavender sports bra and full-length leggings, focused expression. ${IDENTITY_CUE}. Morning light through windows, athletic power.` },
+  { setting: 'gym', mood: 'post_workout', prompt: `BlondeShell taking a post-workout mirror selfie, holding phone below face so her face is fully visible, wearing matching pastel pink sports bra and long leggings, athletic glow. ${IDENTITY_CUE}. LA gym locker room, fitness content vibe.` },
+  { setting: 'gym', mood: 'stretching', prompt: `BlondeShell doing a yoga stretch on a mat in a bright LA studio, wearing a fitted white tank and black full leggings, serene expression. ${IDENTITY_CUE}. Morning golden light through floor-to-ceiling windows, wellness vibe.` },
+  { setting: 'home', mood: 'cozy', prompt: `BlondeShell in her LA apartment, wearing an oversized college hoodie and full-length joggers, sitting cross-legged on the couch with a blanket, laptop open, gaming headphones on. ${IDENTITY_CUE}. Fairy lights, warm tones, gaming/streaming vibe.` },
+  { setting: 'home', mood: 'morning', prompt: `BlondeShell standing by her LA kitchen counter in the morning, wearing a crew-neck cotton tee and matching pajama pants, holding a matcha latte in both hands. ${IDENTITY_CUE}. Soft golden window light, minimal aesthetic apartment, calm morning routine.` },
+  { setting: 'home', mood: 'getting_ready', prompt: `BlondeShell getting ready for a night out with friends in LA, wearing a fitted tee, applying lipgloss at her vanity, excited energy, friends visible in mirror reflection. ${IDENTITY_CUE}. Fairy lights, Friday night LA social vibe, getting ready to go out.` },
+  { setting: 'street', mood: 'urban', prompt: `BlondeShell walking down Melrose Ave in LA, wearing a cropped white tee and vintage high-waist jeans, carrying iced coffee. ${IDENTITY_CUE} (no sunglasses). Golden afternoon light, authentic LA street style.` },
+  { setting: 'street', mood: 'night_out', prompt: `BlondeShell outside a trendy LA cafe at dusk, wearing a knee-length black dress and white sneakers, smiling toward camera, neon signs softly reflecting. ${IDENTITY_CUE}. Cool evening light, going out with friends vibe.` },
+  { setting: 'street', mood: 'sporty', prompt: `BlondeShell on a morning jog on a tree-lined LA street, wearing a matching full-coverage blue running set, AirPods in, natural smile turning to camera. ${IDENTITY_CUE}. Bright morning, athletic lifestyle energy.` },
 ];
 
+// LA identity tags — appended to every caption across platforms
+const LA_TAGS_TT = '#LosAngeles #LA #LALife';
+const LA_TAGS_IG = '#LosAngeles #LA #LALife #California';
+const LA_TAGS_TW = '#LosAngeles #LA';
+
 const CAPTIONS_TIKTOK = [
-  'beach day > everything else\n\n#beachvibes #santamonica #lagirls #goldenhour #beachgirl',
-  'this is literally all i want to do forever\n\n#beachday #summergirl #lalife #vibes #sundayfunday',
-  'main character energy at the beach rn\n\n#maincharacter #beachlife #california #sundayvibes',
-  'gym era continues omg\n\n#gymtok #fitcheck #pilatesgirl #gymgirl #fitnessmotivation',
-  'post gym selfie bc im obsessed w myself rn\n\n#gymselfie #postworkout #fitgirl #pilates',
-  'zen mode activated\n\n#yogatok #morningworkout #yogagirl #flexibility #wellness',
-  'cozy girl agenda activated\n\n#cozygirl #apartmentvibes #homebody #vibes #aestheticroom',
-  'matcha and manifesting\n\n#matchalover #morningvibes #aesthetic #lalife #matcha',
-  'getting ready era is my favorite era\n\n#grwm #getreadywithme #nightout #makeuptok',
-  'melrose >>> everything\n\n#lalife #melrose #streetstyle #ootd #fashiontok',
-  'fit check before going out\n\n#nightout #stylecheck #lalooks #going_out_outfits',
-  'morning run hits different\n\n#runningtok #morningrun #jogger #lamornings #fitgirl',
+  `beach day > everything else\n\n#beachvibes #santamonica #lagirls #goldenhour #beachgirl ${LA_TAGS_TT}`,
+  `this is literally all i want to do forever\n\n#beachday #summergirl #lalife #vibes #sundayfunday ${LA_TAGS_TT}`,
+  `main character energy at the beach rn\n\n#maincharacter #beachlife #california #sundayvibes ${LA_TAGS_TT}`,
+  `gym era continues omg\n\n#gymtok #fitcheck #pilatesgirl #gymgirl #fitnessmotivation ${LA_TAGS_TT}`,
+  `post gym selfie bc im obsessed w myself rn\n\n#gymselfie #postworkout #fitgirl #pilates ${LA_TAGS_TT}`,
+  `zen mode activated\n\n#yogatok #morningworkout #yogagirl #flexibility #wellness ${LA_TAGS_TT}`,
+  `cozy gamer girl agenda activated\n\n#cozygirl #gamergirl #apartmentvibes #homebody #vibes ${LA_TAGS_TT}`,
+  `matcha and manifesting\n\n#matchalover #morningvibes #aesthetic #lalife #matcha ${LA_TAGS_TT}`,
+  `friday night getting ready with me\n\n#grwm #getreadywithme #nightout #fridayvibes ${LA_TAGS_TT}`,
+  `melrose >>> everything\n\n#lalife #melrose #streetstyle #ootd #fashiontok ${LA_TAGS_TT}`,
+  `fit check before going out\n\n#nightout #stylecheck #lalooks #going_out_outfits ${LA_TAGS_TT}`,
+  `morning run hits different\n\n#runningtok #morningrun #jogger #lamornings #fitgirl ${LA_TAGS_TT}`,
 ];
 
 const CAPTIONS_IG = [
-  'golden hour therapy 🌅\n\n.\n.\n.\n#goldenhour #beachvibes #santamonica #california #beachgirl #lalife #sunsetlover',
-  'salt water & sunshine ☀️\n\n.\n.\n.\n#beachday #summervibes #california #lalife #beachlife #sundayfunday #ocean',
-  'me, my book, and the beach ☁️\n\n.\n.\n.\n#beachreading #relaxing #beachvibes #california #bookstagram #sundayvibes',
-  'this is your sign to go to the gym 💪\n\n.\n.\n.\n#gymgirl #fitnessmotivation #pilates #fitcheck #workoutmotivation #fitspo',
-  'she works out 🩷\n\n.\n.\n.\n#gymselfie #postworkout #fitgirl #gymlife #pilatesgirl #fitnessgirl',
-  'finding my center ✨\n\n.\n.\n.\n#yoga #morningflow #wellness #yogagirl #mindfulness #flexibility #zen',
-  'cozy nights in >>> going out\n\n.\n.\n.\n#cozyhome #aestheticroom #homebody #cozyvibes #apartmentdecor #eveningvibes',
-  'matcha mornings 🍵\n\n.\n.\n.\n#matchalatte #morningvibes #aesthetic #minimalstyle #lalife #matchalover',
-  'almost ready 💄\n\n.\n.\n.\n#grwm #getreadywithme #makeuplook #nightoutfit #vanitymirror #prettygirl',
-  'just a girl on melrose 🛍️\n\n.\n.\n.\n#melrose #streetstyle #ootd #fashiongram #lalife #californiastyle #citygirl',
-  'night out vibes ✨\n\n.\n.\n.\n#nightout #lalooks #citystyle #goingout #eveningwear #fashioninspo',
-  'running from my problems (literally) 🏃‍♀️\n\n.\n.\n.\n#morningrun #runninggirl #jogger #fitnesslife #lamornings #runnersofinstagram',
+  `golden hour therapy 🌅\n\n.\n.\n.\n#goldenhour #beachvibes #santamonica #california #beachgirl #lalife #sunsetlover ${LA_TAGS_IG}`,
+  `salt water & sunshine ☀️\n\n.\n.\n.\n#beachday #summervibes #california #lalife #beachlife #sundayfunday #ocean ${LA_TAGS_IG}`,
+  `me, my book, and the beach ☁️\n\n.\n.\n.\n#beachreading #relaxing #beachvibes #california #bookstagram #sundayvibes ${LA_TAGS_IG}`,
+  `this is your sign to go to the gym 💪\n\n.\n.\n.\n#gymgirl #fitnessmotivation #pilates #fitcheck #workoutmotivation #fitspo ${LA_TAGS_IG}`,
+  `she works out 🩷\n\n.\n.\n.\n#gymselfie #postworkout #fitgirl #gymlife #pilatesgirl #fitnessgirl ${LA_TAGS_IG}`,
+  `finding my center ✨\n\n.\n.\n.\n#yoga #morningflow #wellness #yogagirl #mindfulness #flexibility #zen ${LA_TAGS_IG}`,
+  `cozy gamer girl nights 🎮\n\n.\n.\n.\n#cozyhome #gamergirl #aestheticroom #homebody #gaminglife ${LA_TAGS_IG}`,
+  `matcha mornings 🍵\n\n.\n.\n.\n#matchalatte #morningvibes #aesthetic #minimalstyle #lalife #matchalover ${LA_TAGS_IG}`,
+  `friday night energy with my girls 💄\n\n.\n.\n.\n#grwm #getreadywithme #fridaynight #girlsnight ${LA_TAGS_IG}`,
+  `just a girl on melrose 🛍️\n\n.\n.\n.\n#melrose #streetstyle #ootd #fashiongram #lalife #californiastyle #citygirl ${LA_TAGS_IG}`,
+  `night out vibes ✨\n\n.\n.\n.\n#nightout #lalooks #citystyle #goingout #eveningwear #fashioninspo ${LA_TAGS_IG}`,
+  `running from my problems (literally) 🏃‍♀️\n\n.\n.\n.\n#morningrun #runninggirl #jogger #fitnesslife #lamornings #runnersofinstagram ${LA_TAGS_IG}`,
+];
+
+const CAPTIONS_TWITTER = [
+  `beach day > everything else 🌅 ${LA_TAGS_TW}`,
+  `this is literally all i want to do forever ☀️ ${LA_TAGS_TW}`,
+  `main character energy at the beach rn ☁️ ${LA_TAGS_TW}`,
+  `gym era continues omg 💪 ${LA_TAGS_TW}`,
+  `post gym selfie bc im obsessed w myself rn 🩷 ${LA_TAGS_TW}`,
+  `zen mode activated ✨ ${LA_TAGS_TW}`,
+  `cozy gamer girl agenda activated 🎮 ${LA_TAGS_TW}`,
+  `matcha and manifesting 🍵 ${LA_TAGS_TW}`,
+  `friday night getting ready 💄 ${LA_TAGS_TW}`,
+  `melrose >>> everything 🛍️ ${LA_TAGS_TW}`,
+  `fit check before going out ✨ ${LA_TAGS_TW}`,
+  `morning run hits different 🏃‍♀️ ${LA_TAGS_TW}`,
 ];
 
 const skipGenerate = process.argv.includes('--skip-generate');
@@ -174,7 +196,27 @@ console.log('═══ Step 3: Upload + Schedule ═══\n');
 console.log('Fetching Publer accounts...');
 const accounts = await getPlatformIds();
 console.log(`   TikTok: ${accounts.tiktok?.id ?? 'missing'}`);
-console.log(`   Instagram: ${accounts.instagram?.id ?? 'missing'}\n`);
+console.log(`   Instagram: ${accounts.instagram?.id ?? 'missing'}`);
+console.log(`   Twitter: ${accounts.twitter?.id ?? 'missing'}\n`);
+
+// Resolve LA location_id for Instagram geo-tag (once, reused for all IG posts)
+let igLocationId = process.env.INSTAGRAM_LA_LOCATION_ID || null;
+if (!igLocationId && accounts.instagram?.id) {
+  try {
+    const loc = await searchInstagramLocation('Los Angeles, California', accounts.instagram.id);
+    if (loc?.id) {
+      igLocationId = loc.id;
+      console.log(`   IG location: ${loc.name} → ${igLocationId}`);
+    } else {
+      console.log('   IG location: search returned no result (posts will still schedule without geo-tag)');
+    }
+  } catch (err) {
+    console.log(`   IG location: lookup failed (${err.message.slice(0, 60)}) — skipping geo-tag`);
+  }
+} else if (igLocationId) {
+  console.log(`   IG location: using env INSTAGRAM_LA_LOCATION_ID=${igLocationId}`);
+}
+console.log();
 
 // Split approved into Tue (first half) and Wed (second half)
 const half = Math.ceil(approved.length / 2);
@@ -249,12 +291,34 @@ for (const [dayName, batch, dayOffset] of [['Tuesday', tueBatch, 0], ['Wednesday
           scheduledAt: igTime,
           mediaId: media.id,
           mediaType: 'photo',
+          locationId: igLocationId,
         });
         console.log(`      ✅ Instagram @ ${igTime.slice(0, 16)} — job ${jobId}`);
         scheduleResults.push({ label: item.label, platform: 'instagram', day: dayName, time: igTime, jobId, ok: true });
       } catch (err) {
         console.error(`      ❌ Instagram: ${err.message.slice(0, 100)}`);
         scheduleResults.push({ label: item.label, platform: 'instagram', error: err.message, ok: false });
+      }
+    }
+
+    // Schedule Twitter
+    if (accounts.twitter?.id) {
+      try {
+        const twTime = getScheduleTime(dayOffset, hour + 2);
+        const twCaption = CAPTIONS_TWITTER[captionIndex] ?? CAPTIONS_TWITTER[0];
+        const jobId = await schedulePost({
+          accountId: accounts.twitter.id,
+          networkKey: 'twitter',
+          caption: twCaption,
+          scheduledAt: twTime,
+          mediaId: media.id,
+          mediaType: 'photo',
+        });
+        console.log(`      ✅ Twitter @ ${twTime.slice(0, 16)} — job ${jobId}`);
+        scheduleResults.push({ label: item.label, platform: 'twitter', day: dayName, time: twTime, jobId, ok: true });
+      } catch (err) {
+        console.error(`      ❌ Twitter: ${err.message.slice(0, 100)}`);
+        scheduleResults.push({ label: item.label, platform: 'twitter', error: err.message, ok: false });
       }
     }
 

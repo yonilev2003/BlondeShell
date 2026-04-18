@@ -1,12 +1,15 @@
 # BlondeShell — Session Progress
-## Date: 2026-04-18 | Status: v5.2 COMPLETE — Sprint 1 DONE — Ready for Night Session
+## Date: 2026-04-18 EOD | Status: v5.2 + Sprint 1 DONE + Night Session DONE — Sprint 2 LOADED
 
 ---
 
 ## CURRENT BRANCH
-`main` — v5.2 merged (branch `claude/push-to-github-PjFnX` fully integrated)
-Only remaining for today: **night session** (`npm run schedule:night`).
-Tomorrow and beyond: Sprint 2 (Apr 19) → Launch (Apr 24) per v5.2 plan below.
+Working branch: `claude/push-to-github-PjFnX` (per session guidance).
+`main` has v5.2 merged from earlier today. EOD commits on this branch will be merged to main after user review.
+
+## FIRST ACTION IN MORNING SESSION (Apr 19)
+1. Read `MORNING_QUESTIONS.md` — Part A verification + locked Part B decisions.
+2. Start Sprint 2 day work — plan in this file below.
 
 ---
 
@@ -205,3 +208,62 @@ Revenue target Month 1: $1,200-2,300 net
 ---
 
 *Session ended 2026-04-18. Resume: `npm run readiness` to confirm state, then `npm run schedule:night` for night batch.*
+
+---
+
+## 🌙 NIGHT-SESSION RESULTS (Apr 18, run from user's Mac)
+
+- Generated: 12/12
+- Approved: 4/12 (beach_playful, gym_athletic, gym_stretching, street_sporty)
+- Rejected: 8/12 → 3× NSFW T2, 4× identity <0.85, 1× brand fit
+- Scheduled in Publer: **8/8** approved × 2 platforms (Tue+Wed, TT+IG). Twitter was missing from this run — fixed tonight.
+- Stale Publer post: NOT visible in schedule — no cleanup needed.
+
+## 🛠️ EOD CODE CHANGES (Apr 18, this session, on branch `claude/push-to-github-PjFnX`)
+
+1. **`scripts/night_session_batch.mjs`** — prompt rewrites, LA hashtags, Twitter integration, IG geo-tag:
+   - Added `IDENTITY_CUE` constant → injected into all 12 SETTINGS_MOODS prompts (bright green eyes visible, platinum blonde, no face-covering sunglasses).
+   - Rewrote all 12 prompts to remove bikini tops / oversized sleep shirts / sunglasses (T1-safe + brand-aligned).
+   - Added `LA_TAGS_TT / LA_TAGS_IG / LA_TAGS_TW` and appended to all captions.
+   - Added `CAPTIONS_TWITTER[12]` + Twitter scheduling block (posts go out at `hour+2` UTC, same image as IG/TT).
+   - Imports + calls `searchInstagramLocation('Los Angeles, California')` — auto geo-tag every IG post. Falls back to `INSTAGRAM_LA_LOCATION_ID` env var if API search fails.
+2. **`lib/publer.js`** — IG location support + search helper:
+   - `buildInstagramPhoto` / `buildInstagramVideo` accept `locationId`, emit `details: { location_id }`.
+   - `schedulePost({ …, locationId })` threads it through.
+   - New `searchInstagramLocation(query, accountId)` — caches results in-memory, tolerant of API shape variance.
+3. **`obsidian/blondeshell-brain/APIs/publer.md`** — Twitter row added (new active account). Removed hard "do not post" note.
+4. **`MORNING_QUESTIONS.md`** — added A6 (Monday post count mystery), A7 (Twitter status), LOCKED DECISIONS section (B1-B4 answered), Sprint 1 night results summary.
+
+## 🎯 SPRINT 2 PLAN (Apr 19) — locked decisions from owner
+
+### B1. nsfwjs integration — **DO TOMORROW** (day work)
+Replace Claude vision in `lib/qa_gate.js` NSFW step with local `nsfwjs` classifier. ~$18/mo savings.
+- `npm i nsfwjs @tensorflow/tfjs-node` (add to package.json)
+- New `lib/nsfw_classifier.js` with `classifyImage(buffer)` → `{ class, prob }` and T1/T2/T3 gate.
+- Wire into `qa_gate.runFullQA` — use nsfwjs for NSFW, KEEP Claude vision for identity + brand fit (no local face-similarity model good enough yet).
+- Test: re-run QA on the 8 rejected night-session images, compare verdicts.
+- Est: 2-3h.
+
+### B2. Voice — **KEEP** current voice ID `briGJOLAce4pTnmxMbbi`. No action.
+
+### B3. First vlog test (30s) — **YES** (night of Sprint 2)
+- `node -e "import('./lib/vlog.js').then(m => m.generateVlog({ arcId: 'arc_001', duration: 30 }))"`
+- Validates pipeline: script (Claude) → narration (ElevenLabs) → start frames (Seedream) → i2v clips (Kling v3) → talking head (Kling lipsync) → ffmpeg stitch.
+- Cost: ~$0.50. Risk: first real test, likely needs debugging.
+
+### B4. Sprint 2 night batch — **FULL** (18 images + 6 videos + 1 vlog)
+- 18 fresh images (6 new settings × 3 moods OR 6 settings × 3 time-of-day). Use the improved prompts from tonight.
+- 6 short videos via Kling v3 i2v from approved start frames (standard/image-to-video, 5s each).
+- 1× 30s vlog (see B3).
+- Schedule Thu-Sat for all 3 platforms (TT + IG + Twitter).
+- Cost: ~$3-5 total.
+
+### Other Sprint 2 day tasks (in order)
+1. **Morning: verify Monday posts publishing** — check Publer → Published, TikTok, IG. Per A6, investigate why only 3 of 6 Monday posts visible.
+2. **nsfwjs integration** (B1, 2-3h).
+3. **Re-run `npm run schedule:night`** with tightened prompts if approved count from last night feels thin — expect ~75% approval.
+4. **Night: full batch** (B4).
+
+---
+
+*Updated 2026-04-18 EOD. Resume in morning: read MORNING_QUESTIONS.md first, then this file's Sprint 2 section.*
