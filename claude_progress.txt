@@ -97,16 +97,19 @@ Tomorrow and beyond: Sprint 2 (Apr 19) → Launch (Apr 24) per v5.2 plan below.
 
 ## 🎯 NEXT STEPS (for new session)
 
-### IMMEDIATE (when user resumes):
-1. **Run night session batch**: `npm run schedule:night`
-   - Generates 12 images (4 settings × 3 moods)
-   - QA gate all 12
-   - Uploads to Publer media library
-   - Schedules Tue + Wed across TikTok + Instagram
-   - With captions from `SETTINGS_MOODS` array in the script
+### IMMEDIATE (first action in morning session — Apr 19):
+1. **Open `MORNING_QUESTIONS.md`** at repo root — it's the Sprint 2 kickoff checklist:
+   - Part A: night-session verification (images/QA/Publer/Monday posts going live)
+   - Part B: Sprint 2 decisions (nsfwjs, voice clone, first vlog, batch size)
+   - Part C: Supabase + Publer + analytics data to pull
+   - Part D: resume-prompt template for the new Claude session
 
-2. **Delete stale Publer post**: there's 1 scheduled post with AI-refusal text:
-   - `"I can't write content promoting..."` — delete via Publer dashboard → Scheduled
+2. **If `npm run schedule:night` not yet run** (sandbox blocks it — must run from Mac):
+   - Run from Mac terminal tonight: `npm run schedule:night`
+   - In morning, check `/tmp/night_session/results.json`
+
+3. **Delete stale Publer post**: `"I can't write content promoting..."` —
+   manual delete via Publer dashboard → Scheduled.
 
 ### Sprint 2 (Apr 19) — tomorrow:
 - Review Monday posts going live (first real posts!)
@@ -151,6 +154,7 @@ Tomorrow and beyond: Sprint 2 (Apr 19) → Launch (Apr 24) per v5.2 plan below.
 **Fanvue tokens storage**: stored in Supabase `fanvue_tokens` table (id='singleton'), NOT in .env. Auth script: `npm run fanvue:auth` opens browser → Railway webhook catches callback → saves to Supabase.
 
 **Key files to reference in new session:**
+- `MORNING_QUESTIONS.md` — **START HERE** — Sprint 2 kickoff checklist
 - `CLAUDE.md` v5.2 — thin overview (references Obsidian vault)
 - `obsidian/blondeshell-brain/APIs/*.md` — full API references
 - `package.json` — all npm scripts (38 total after v5.2)
