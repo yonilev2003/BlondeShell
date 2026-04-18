@@ -33,7 +33,19 @@
     "generate:cycle2:images": "node scripts/generate_cycle2.js --images-only",
     "generate:cycle2:videos": "node scripts/generate_cycle2.js --videos-only",
     "c2pa:test": "node scripts/sign_c2pa.js",
-    "qa:batch": "node scripts/qa_batch_check.js"
+    "qa:batch": "node scripts/qa_batch_check.js",
+    "readiness": "node scripts/launch_readiness.mjs",
+    "pipeline": "node -e \"import('./lib/pipeline.js').then(m => m.runDailyPipeline({}, { imageCount: 3, videoCount: 1 }))\"",
+    "agents:strategy": "node agents/strategy_agent.js",
+    "agents:revenue": "node agents/revenue_agent.js",
+    "agents:tool-eval": "node agents/tool_eval_agent.js",
+    "agents:plan-update": "node agents/plan_update_agent.js",
+    "fanvue:check": "node scripts/check_fanvue_media.mjs",
+    "publer:cleanup": "node scripts/cleanup_failed_monday.mjs",
+    "schedule:monday": "node scripts/schedule_monday_v2.mjs",
+    "schedule:night": "node scripts/night_session_batch.mjs",
+    "test:fal": "node scripts/test_fal_generate.mjs",
+    "check:bios": "node scripts/check_bios.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
