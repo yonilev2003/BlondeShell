@@ -84,7 +84,7 @@ Layer 4: Top 5 refs by context + all hero images → every call
 < 0.85 → REJECT | < 0.85 x2 → yellow alert | < 0.80 → HARD STOP
 ```
 Image: fal-ai/seedream-v4-5 | Video: fal-ai/kling-video/v3/standard/image-to-video
-Voice: ElevenLabs Starter | Lip-sync: Hedra
+Voice: ElevenLabs Starter | Lip-sync: Kling v3 audio-to-video (native)
 
 ## CONTENT TIERS
 | Tier | Platforms | Rule |
@@ -106,7 +106,7 @@ Safety:
 ## VLOG PIPELINE (Arc-Driven)
 ```
 Brand Arc → Script (Claude Haiku) → Narration (ElevenLabs) → Start Frames (Seedream)
-→ Video Clips (Kling 3.0) → Talking Head (Hedra) → Stitch (ffmpeg) → 30-60s vertical
+→ Video Clips (Kling 3.0 i2v) → Talking Head (Kling 3.0 lipsync A2V) → Stitch (ffmpeg) → 30-60s vertical
 ```
 Vlogs derive from current Strategic Brand Arc. Never random.
 
@@ -177,8 +177,8 @@ Timeout: 4h → "surprise me" fallback.
 | */2h | viral_check | Viral detection |
 
 ## API KEYS
-Active: ANTHROPIC, FAL, SUPABASE_*, FANVUE_*, PUBLER, RESEND, SUBSTY_SERVICE_*, ELEVENLABS, HEDRA
-On the side: MANYCHAT, CONVERTKIT, OPENAI_CODEX, TWITTER_COOKIES_B64
+Active: ANTHROPIC, FAL (Seedream v4.5 + Kling v3 i2v + Kling v3 lipsync), SUPABASE_*, FANVUE_*, PUBLER, RESEND, ELEVENLABS
+Not yet: SUBSTY (no public API — manual or Playwright), MANYCHAT, CONVERTKIT, OPENAI, TWITTER_COOKIES_B64 (all via Publer)
 
 ## WHEN STUCK ON API
 Load from vault first (APIs/*.md). If unclear:

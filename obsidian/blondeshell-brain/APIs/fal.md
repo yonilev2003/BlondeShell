@@ -1,7 +1,7 @@
 ---
 title: fal.ai API Reference
 updated: 2026-04-18
-models: seedream-v4.5-edit, kling-v3-standard-i2v
+models: seedream-v4.5-edit, kling-v3-standard-i2v, kling-v3-lipsync-a2v
 ---
 
 # fal.ai — BlondeShell Reference
@@ -140,6 +140,57 @@ const videoUrl = result.data.video.url;
 
 ### Cost
 ~$0.12/clip at 5s. Longer durations cost proportionally more.
+
+---
+
+## Model 3: Kling v3 Lipsync (Audio-to-Video)
+
+**Model ID:** `fal-ai/kling-video/lipsync/audio-to-video`
+
+Replaces Hedra. Takes an existing video + audio → returns lip-synced video.
+Used for: BlondeShell "talking head" scenes in vlogs with her ElevenLabs voice.
+
+### Input
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `video_url` | string | required | .mp4/.mov, ≤100MB, 2–10s, 720p/1080p, 720–1920px |
+| `audio_url` | string | required | ≤5MB, 2–60s duration, .mp3/.wav/.m4a |
+
+### Output
+```json
+{ "video": { "url": "...", "file_size": ..., "content_type": "video/mp4" } }
+```
+
+### Full talking-head pipeline
+
+```js
+// 1. Seedream → character-consistent image
+const img = await generateImage({ setting, tier: 'T1', promptCore });
+
+// 2. Kling i2v → short silent clip (generate_audio: false)
+const baseVideo = await fal.subscribe('fal-ai/kling-video/v3/standard/image-to-video', {
+  input: { image_url: img.url, prompt: motionPrompt, duration: '5', generate_audio: false },
+});
+
+// 3. ElevenLabs → BlondeShell narration
+const audioBuffer = await generateSpeech(narrationText);
+const audioUrl = await uploadToStorage(audioBuffer);   // must be publicly accessible
+
+// 4. Kling lipsync → adds mouth movement synced to audio
+const finalVideo = await fal.subscribe('fal-ai/kling-video/lipsync/audio-to-video', {
+  input: { video_url: baseVideo.data.video.url, audio_url: audioUrl },
+});
+```
+
+Or use `lib/lipsync.js` helper:
+```js
+import { generateTalkingHead } from './lib/lipsync.js';
+const video = await generateTalkingHead({ startImageUrl, audioUrl, prompt, duration: 5 });
+```
+
+### Cost
+~$0.10 per lipsync (in addition to i2v cost).
 
 ---
 
