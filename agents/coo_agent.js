@@ -71,14 +71,21 @@ You will receive a data dump. Output ONLY valid JSON:
   "action_reasons": ["reason 1 if requires_action", ...],
   "revenue_assessment": "on-track | behind | critical",
   "growth_assessment": "on-track | behind | critical",
-  "top_priority": "single most important thing to fix or maintain today"
+  "top_priority": "single most important thing to fix or maintain today",
+  "api_issues": ["any unresolved API errors/questions — include the API name + error code"]
 }
 
 Flag requires_action = true if:
 - Revenue < 50% of weekly target ($31.25)
 - Growth < 10 new subs this week
 - Any agent is marked [AGENT DOWN]
-- Content pipeline has <5 approved items`;
+- Content pipeline has <5 approved items
+- Unresolved Fanvue or Publer API errors for >24h
+
+For API errors list them in api_issues so the owner can ask the relevant AI assistant:
+- Fanvue questions: api.fanvue.com/docs → Ask AI button
+- Publer questions: publer.com/docs → Ask AI button
+- Always include mediaUuid / job_id / error message when escalating`;
 
 // ─── Data fetchers ────────────────────────────────────────────────────────────
 

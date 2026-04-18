@@ -1,5 +1,20 @@
-# BlondeShell — CLAUDE.md v5.1
-# Full Autonomy Architecture | 2026-04-17
+# BlondeShell — CLAUDE.md v5.2
+# Full Autonomy Architecture | 2026-04-18
+
+## SECOND BRAIN — Obsidian Vault
+```
+obsidian/blondeshell-brain/
+  APIs/         — API references (load on demand via lib/obsidian.js)
+    fanvue.md   — Fanvue v2025-06-26
+    publer.md   — Publer v1
+  Rules/        — Learned rules (R-XXX.md), auto-inserted by learning_agent
+  Patterns/     — Weekly analytics + tool evaluations
+  Arcs/         — Brand storyline arcs
+  Mistakes/     — Error logs (YYYY-MM-DD.md)
+  Changelog/    — Weekly system changelog
+```
+Load via `import { loadAPIReference, readNote } from './lib/obsidian.js'`.
+Keep CLAUDE.md thin. Details live in the vault.
 
 ## MISSION
 Fully autonomous AI influencer. Zero human intervention for daily operations.
@@ -165,4 +180,10 @@ Timeout: 4h → "surprise me" fallback.
 Active: ANTHROPIC, FAL, SUPABASE_*, FANVUE_*, PUBLER, RESEND, SUBSTY_SERVICE_*, ELEVENLABS, HEDRA
 On the side: MANYCHAT, CONVERTKIT, OPENAI_CODEX, TWITTER_COOKIES_B64
 
-*v5.1 | 2026-04-17 | Obsidian: obsidian/blondeshell-brain/ | State: claude_progress.txt + Supabase*
+## WHEN STUCK ON API
+Load from vault first (APIs/*.md). If unclear:
+- Fanvue → `api.fanvue.com/docs` → Ask AI
+- Publer → `publer.com/docs` → Ask AI
+- COO digest flags any unresolved API issues
+
+*v5.2 | 2026-04-18 | Obsidian vault is source of truth | State: claude_progress.txt + Supabase*
