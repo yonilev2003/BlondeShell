@@ -30,6 +30,10 @@ for (const file of files) {
   const line = `${verdict.tier.padEnd(3)} (${verdict.confidence.toFixed(2)}) ${ms}ms — ${file}`;
   console.log(`  ${line}`);
   console.log(`     ${verdict.notes}`);
+  if (verdict.scores) {
+    const s = verdict.scores;
+    console.log(`     raw: Neutral=${(s.Neutral??0).toFixed(2)} Drawing=${(s.Drawing??0).toFixed(2)} Sexy=${(s.Sexy??0).toFixed(2)} Porn=${(s.Porn??0).toFixed(2)} Hentai=${(s.Hentai??0).toFixed(2)}`);
+  }
   results.push({ file, ...verdict, ms });
 }
 
