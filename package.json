@@ -48,7 +48,9 @@
     "test:voice": "node scripts/test_voice.mjs",
     "test:fanvue": "node scripts/test_fanvue_upload.mjs",
     "test:fanvue-api": "node scripts/test_fanvue_api.mjs",
-    "check:bios": "node scripts/check_bios.mjs"
+    "test:webhook": "node scripts/test_webhook_signature.mjs",
+    "check:bios": "node scripts/check_bios.mjs",
+    "test:alerts": "ALERT_DRY_RUN=true node scripts/test_alerts.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
