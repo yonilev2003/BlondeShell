@@ -18,6 +18,14 @@ function runAgent(name) {
   proc.on('exit', (code) => console.log(`[cron] ${name} exited (${code})`));
 }
 
+function runLib(libFile, fnName, argsJson = '{}') {
+  const expr = `import('./lib/${libFile}').then(m => m.${fnName}(${argsJson})).catch(e => { console.error(e); process.exit(1); })`;
+  console.log(`[cron] starting lib/${libFile}#${fnName}`);
+  const proc = spawn('node', ['-e', expr], { stdio: 'inherit', cwd: ROOT });
+  proc.on('error', (err) => console.error(`[cron] lib/${libFile} failed to start: ${err.message}`));
+  proc.on('exit', (code) => console.log(`[cron] lib/${libFile} exited (${code})`));
+}
+
 function runScript(name) {
   const script = join(ROOT, 'scripts', `${name}.py`);
   console.log(`[cron] starting script ${name}`);
@@ -295,15 +303,15 @@ refresh_token: ${refresh_token?.slice(0, 20)}...</pre>
 
 // ── Agent cron schedule v5.2 (all times UTC) ────────────────────────────────
 cron.schedule('0 3  * * *',   () => runAgent('revenue_agent'));
-cron.schedule('0 4  * * *',   () => runAgent('pipeline'));
+cron.schedule('0 4  * * *',   () => runLib('pipeline.js', 'runDailyPipeline', '{}, { imageCount: 3, videoCount: 1 }'));
 cron.schedule('0 6  * * *',   () => runAgent('learning_agent'));
-cron.schedule('0 8  * * 1',   () => runAgent('inspiration_engine'));
+cron.schedule('0 8  * * 1',   () => runLib('inspiration_engine.js', 'generateCreativeBrief', "{ arcId: 'arc_001' }"));
 cron.schedule('0 10 * * *',   () => runAgent('marketing_agent'));
 cron.schedule('0 11 1 * *',   () => runAgent('strategy_agent'));
 cron.schedule('0 12 1 * *',   () => runAgent('tool_eval_agent'));  // monthly, after strategy
 cron.schedule('0 12 * * *',   () => runAgent('coo_agent'));
 cron.schedule('0 13 * * *',   () => runAgent('trends_agent'));
-cron.schedule('0 15 * * 1,3,5', () => runAgent('vlog_pipeline'));
+cron.schedule('0 15 * * 1,3,5', () => runLib('vlog.js', 'generateVlog', "{ arcId: 'arc_001' }, { duration: 30 }"));
 cron.schedule('0 19 * * *',   () => runAgent('learning_agent'));
 cron.schedule('0 2  * * 1',   () => runAgent('plan_update_agent'));
 
