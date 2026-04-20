@@ -1,304 +1,130 @@
 # BlondeShell — Session Progress
-## Date: 2026-04-18 EOD | Status: v5.2 + Sprint 1 DONE + Night Session DONE — Sprint 2 LOADED
+## Date: 2026-04-19 EOD | Status: Sprint 2 core DONE (webhook+alerts+queue deployed) · Night batch partial (videos pending from Mac)
 
 ---
 
 ## CURRENT BRANCH
-Working branch: `claude/push-to-github-PjFnX` (per session guidance).
-`main` has v5.2 merged from earlier today. EOD commits on this branch will be merged to main after user review.
+`claude/review-tasks-timeline-HqCaG` — HEAD: `16c10fd`. Pushed. Not merged to main yet.
 
-## FIRST ACTION IN MORNING SESSION (Apr 19)
-1. Read `MORNING_QUESTIONS.md` — Part A verification + locked Part B decisions.
-2. Execute the Sprint 2 task list below.
-
----
-
-## ✅ SPRINT 2 TASK LIST — Apr 19 (locked, owner-approved)
-
-### 🌅 Morning (~30 min)
-1. `git pull origin main` — sync latest (includes EOD night-session fixes).
-2. Read `MORNING_QUESTIONS.md` → Part A verification checklist.
-3. Check Publer → Published: did the Monday posts go live? (IG + TikTok)
-4. Investigate **A6**: why only 3 Monday posts visible in Publer (expected 6, per Sprint 1 schedule gym/home/beach × 2 platforms).
-
-### 💻 Day work (~3 hours) — nsfwjs integration (B1)
-5. `npm i nsfwjs @tensorflow/tfjs-node` (add to `package.json`).
-6. Create `lib/nsfw_classifier.js` with `classifyImage(buffer) → { class, prob }` and T1/T2/T3 gating thresholds.
-7. Wire into `lib/qa_gate.js` — replace Claude-vision NSFW call only (keep Claude for identity + brand fit).
-8. Test: re-run QA on the 8 rejected images from `/tmp/night_session/` — compare verdicts, sanity-check thresholds.
-9. (Optional) re-run `npm run schedule:night` with the tightened prompts + new NSFW gate to top up scheduled content.
-
-### 🌙 Night batch (~$3-5, B3 + B4)
-10. Generate **18 fresh images** using tightened prompts (6 settings × 3 moods OR 6 × time-of-day).
-11. Generate **6 short videos** via Kling v3 i2v from approved start frames (5s each, `fal-ai/kling-video/v3/standard/image-to-video`).
-12. Generate **1× 30s vlog** E2E (B3 — pipeline validation):
-    ```
-    node -e "import('./lib/vlog.js').then(m => m.generateVlog({ arcId: 'arc_001', duration: 30 }))"
-    ```
-13. Schedule all approved content Thu-Sat across TikTok + Instagram + Twitter.
-
-### 🔒 Locked decisions (from owner, Apr 18 EOD)
-- **Voice:** keep ElevenLabs `briGJOLAce4pTnmxMbbi` — no action.
-- **Twitter:** now active (different account), included in night batch.
-- **nsfwjs:** do day-of-Sprint-2 (saves ~$18/mo).
-- **Vlog test:** yes (E2E validation).
-- **Batch size:** full (images + videos + vlog).
-
-### Launch: Apr 24 (5 days away).
+## TOMORROW (Apr 20) FIRST ACTIONS
+1. Verify last night's videos uploaded (if user ran `schedule:videos --bypass-qa` before sleep).
+2. Verify Monday's 6 posts actually went live on IG + TikTok (these were scheduled Apr 18 — A4 from MORNING_QUESTIONS).
+3. Twitter verification — **no Twitter posts visible in Publer Scheduled tab** despite Twitter being a connected account. Need to audit `getPlatformIds()` — is `accounts.twitter` being returned? If not → night_session is silently dropping Twitter.
 
 ---
 
-## v5.2 STATE (as of 2026-04-18 EOD)
+## ✅ COMPLETED TODAY (Apr 19, Sprint 2)
 
-### ✅ COMPLETED THIS SESSION
+### Core dev (day)
+- **Railway deploy** — `railway up` succeeded. Health check passed. Server `[webhook] BlondeShell webhook server listening on :8080`. All crons registered.
+- **Webhook cron bugfix** (`1396aea`) — 3 silently-broken crons (`pipeline`, `inspiration_engine`, `vlog_pipeline`) were calling `runAgent()` on files that live in `lib/`, not `agents/`. Added `runLib(libFile, fnName, argsJson)` helper in `webhook/server.js`. Would have been silent post-launch failures.
+- **nsfwjs integration — ABORTED + REVERTED** (`a6abd89`). Spent half the day on it. MobileNetV2 + InceptionV3 both classified every brand-aligned image (beach bikini, gym, athletic wear) as T2=sexy. Wrong calibration for our brand aesthetic. Lesson learned: validate pretrained models on YOUR dataset BEFORE integration. Kept Claude vision as QA classifier. ~$18/mo savings abandoned — not worth miscalibrating the gate.
+- **A6 mystery resolved** — Publer displays in **Israel time (UTC+3)**, not UTC, not LA. All 14 posts scheduled intact; Mon 6 Sprint 1 posts split as 3 Mon IL + 3 Tue IL due to late-UTC times pushing past midnight IL.
 
-**Architecture upgrades:**
-- `lib/ab_testing.js` — A/B test engine (5 caption variations, 30min stagger, pick winner after 2h)
-- `lib/hook_database.js` — hook performance tracking by platform + type
-- `agents/tool_eval_agent.js` — monthly tool/stack evaluation → Obsidian report
-- `agents/coo_agent.js` v2 — week-over-week, variety score, platform health, learning quality, daily email always sent
-- `webhook/server.js` — viral check every 30min (was 2h), tool_eval + pipeline crons added
-- `lib/pipeline.js` — integrates A/B testing for T1 TikTok/Instagram
+### Parallel night agents (3 lanes, committed in `687afcb` + `8ef60b3` + `bdf193a`)
+- **Agent A — Fanvue webhook hardening**: idempotency (sha256 key from `event|subscriber_id|timestamp`, stored in `webhook_events` with PK-conflict-ignore pattern), per-request UUID IDs in all logs, `sbRetry` wrapper on every Supabase call (3x, 500/1000/2000ms backoff), signature verification test (`npm run test:webhook` — 3/3 passing: valid sig 200, invalid 401, no secret 200), in-memory rate limit 10 `message.received`/60s per subscriber_id -> 429.
+- **Agent B — Alerts module**: `lib/alerts.js` with `sendAlert({level, title, body, metadata})`, `sendRedAlert`, `sendDailyDigest`. Resend integration, Supabase `alert_log` table, dry-run mode via `ALERT_DRY_RUN=true`. `agents/alert_checker.js` wires 6 red-alert conditions per CLAUDE.md (face similarity <0.85 >=3 hits, Fanvue flagged content, Claude spend >$150/mo, pipeline stall 6h, Substy down, Fanvue tokens stale 30d). Migration `20260419000001_alerts.sql`.
+- **Agent C — Backup content queue**: `lib/backup_queue.js` (enqueueContent/dequeueOldest atomic/queueSize/refillFromApproved) + `agents/backup_check_agent.js` (hourly cron, pulls from queue when today's slots < 3, warns at <10, red-alerts at <3). Migration `20260419000002_backup_queue.sql`. Canonical table `content_items` (NOT `generated_content` — agent caught this codebase-wide naming convention).
 
-**Hedra → Kling v3 lipsync refactor:**
-- `lib/hedra.js` DELETED
-- `lib/lipsync.js` NEW — uses `fal-ai/kling-video/lipsync/audio-to-video`
-- `generateTalkingHead({ startImageUrl, audioUrl, prompt, duration })` helper
-- `lib/vlog.js` refactored to use Kling lipsync
-- CLAUDE.md updated — no more HEDRA in stack
-
-**Obsidian vault (source of truth for APIs):**
-- `obsidian/blondeshell-brain/APIs/publer.md` — 303 lines
-- `obsidian/blondeshell-brain/APIs/fanvue.md` — 254 lines
-- `obsidian/blondeshell-brain/APIs/fal.md` — 239 lines (Seedream + Kling i2v + Kling lipsync)
-- `obsidian/blondeshell-brain/APIs/_index.md` — index
-- Agents load via `import { loadAPIReference } from './lib/obsidian.js'`
-
-**Scripts (new):**
-- `scripts/launch_readiness.mjs` → `npm run readiness` — full go/no-go check (41/41 passing)
-- `scripts/check_bios.mjs` → `npm run check:bios` — bio consistency
-- `scripts/check_fanvue_media.mjs` — diagnostic for media UUID/list
-- `scripts/fanvue_check_tokens.js` — verify tokens + /creators/me
-- `scripts/test_voice.mjs` → `npm run test:voice` — 3 ElevenLabs clips
-- `scripts/test_fanvue_upload.mjs` → `npm run test:fanvue` — E2E multipart upload
-- `scripts/test_fanvue_api.mjs` → `npm run test:fanvue-api` — API + token refresh
-- `scripts/night_session_batch.mjs` → `npm run schedule:night` — 12 images + QA + schedule Tue/Wed
-- `scripts/schedule_monday_v2.mjs` → `npm run schedule:monday` — Monday posts
-
-**Supabase migrations:**
-- `supabase/migrations/20260418000001_ab_testing.sql` — ab_test_groups + hook_performance
-- `supabase/migrations/20260418000002_brand_arc_seed.sql` — Brand Arc #1 + annual_milestones 2026
-- `supabase/migrations/v52_combined.sql` — idempotent catch-all (13 tables + seeds) — RUN VIA SQL EDITOR ✅
-
-**Bug fixes:**
-- `lib/publer.js` — fixed result parser (media is direct array, not `{ media: [...] }`)
-- `lib/rule_inserter.js` — `glob.sync` instead of named `globSync` (compat with glob v8)
-- `scripts/launch_readiness.mjs` — `select('*')` for fanvue_tokens (avoids column-not-found)
+### Night batch support scripts
+- **`npm run schedule:videos`** (`e14bdbd` + `16c10fd`) — reads `/tmp/night_session/results.json` approved items (or with `--bypass-qa` reads all PNGs in `/tmp/night_session/` directly), generates up to 6 Kling v3 i2v (5s, motion prompts per setting), uploads to Supabase + Publer, schedules Thu-Fri-Sat across TT + IG reel + Twitter.
+- **`--skip-generate` fix for night_session_batch.mjs** (`3f82d42`) — was passing local `/tmp/*.png` paths to Claude vision -> 400 "Only HTTPS URLs are supported". Now uploads cached to Supabase before QA.
 
 ---
 
-## ✅ SPRINT 1 RESULTS (Today)
+## USER MUST RUN ON MAC (Apr 19 before sleep, or morning)
 
-**All 6 steps passed from user's Mac terminal:**
-1. `npm run readiness` → 41/41 ✅
-2. `npm run test:fal` → 3 images generated ✅
-3. `npm run test:voice` → 3 ElevenLabs clips (social/dm/vlog) ✅
-4. `npm run test:fanvue-api` → 15 posts + 15 media visible ✅
-   `npm run test:fanvue` → upload works, mediaUuid `54b418bb-50ee-4ccc-93e5-e3609d046c94` ✅
-5. `npm run schedule:monday` → **6/6 posts scheduled** for Monday (3 gym/home/beach × 2 platforms)
-   - Publer IG: `69d763474d92c20853b2f6bd` (ig_business via FB Page)
-   - Publer TikTok: `69d76503f9cf2bb87988ea09`
-6. `npm run check:bios` → Publer returns empty bio data (API limitation) — user confirmed bios set manually ✅
+```bash
+# Git state conflict from earlier runs
+git checkout -- package-lock.json
+git pull origin claude/review-tasks-timeline-HqCaG
+rm -rf node_modules
+npm install
 
-**Publer scheduled posts (all have job IDs, verified in Publer dashboard):**
-- GYM: TT `2026-04-20T21:00Z` + IG `2026-04-20T19:00Z`
-- HOME: TT `2026-04-20T14:00Z` + IG `2026-04-20T15:00Z`
-- BEACH: TT `2026-04-21T02:00Z` + IG `2026-04-20T23:00Z`
-
----
-
-## 🔑 ENV STATE (confirmed working from user's .env)
-
-✅ ANTHROPIC_API_KEY, FAL_KEY (NEW key, old had host allowlist), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-✅ Publer_API, PUBLER_WORKSPACE_ID
-✅ FANVUE_CLIENT_ID, FANVUE_CLIENT_SECRET (tokens in Supabase fanvue_tokens, re-auth'd today)
-✅ ELEVENLABS_API_KEY (Voice ID: `briGJOLAce4pTnmxMbbi`)
-✅ RESEND_API_KEY, ALERT_EMAILS
-
-❌ Not set (intentional):
-- SUBSTY_SERVICE_KEY — no public API, manual or Playwright
-- OPENAI_API_KEY — not needed (Claude handles all)
-- TWITTER_COOKIES_B64 — not needed (via Publer)
-- HEDRA_API_KEY — REMOVED (Kling lipsync replaces it)
-
----
-
-## 🎯 NEXT STEPS (for new session)
-
-### IMMEDIATE (first action in morning session — Apr 19):
-1. **Open `MORNING_QUESTIONS.md`** at repo root — it's the Sprint 2 kickoff checklist:
-   - Part A: night-session verification (images/QA/Publer/Monday posts going live)
-   - Part B: Sprint 2 decisions (nsfwjs, voice clone, first vlog, batch size)
-   - Part C: Supabase + Publer + analytics data to pull
-   - Part D: resume-prompt template for the new Claude session
-
-2. **If `npm run schedule:night` not yet run** (sandbox blocks it — must run from Mac):
-   - Run from Mac terminal tonight: `npm run schedule:night`
-   - In morning, check `/tmp/night_session/results.json`
-
-3. **Delete stale Publer post**: `"I can't write content promoting..."` —
-   manual delete via Publer dashboard → Scheduled.
-
-### Sprint 2 (Apr 19) — tomorrow:
-- Review Monday posts going live (first real posts!)
-- Consider nsfwjs integration to reduce Claude vision QA cost
-- Generate 18 images + 6 videos overnight
-
-### Sprint 3 (Apr 20):
-- Deploy webhook server to Railway (if not already)
-- Activate all crons (currently defined in webhook/server.js):
-  - `0 3` revenue_agent
-  - `0 4` pipeline
-  - `0 6` learning_agent
-  - `0 8 Mon` inspiration_engine
-  - `0 10` marketing_agent
-  - `0 11 1` strategy_agent
-  - `0 12 1` tool_eval_agent (monthly)
-  - `0 12` coo_agent
-  - `0 13` trends_agent
-  - `0 15 MWF` vlog_pipeline
-  - `0 19` learning_agent evening
-  - `0 2 Mon` plan_update_agent
-  - `*/30` viral_check (30min, new in v5.2)
-
-### Sprint 6 (Apr 23) — Pre-Launch QA:
-- Verify all bios consistent (manually, since Publer doesn't return bio data)
-- Full system review
-
-### LAUNCH DAY (Apr 24):
-- GO LIVE, first auto-posts
-- $150-200 on shoutouts from gaming/meme pages
-
----
-
-## 📝 IMPORTANT CONTEXT FOR NEXT SESSION
-
-**Sandbox limitation**: Claude Code sandbox environment blocks outbound requests to fal.ai, Fanvue, Publer APIs (403 "Host not in allowlist"). ALL real API tests must be run from user's Mac terminal, not from Claude Code.
-
-**Supabase migration drift**: Remote has ghost migrations `20260411102344/5` not in local git. Fixed by using `supabase/migrations/v52_combined.sql` (idempotent CREATE TABLE IF NOT EXISTS) pasted into SQL Editor instead of `supabase db push`.
-
-**Publer validity warning**: `validity: instagram=false, tiktok=false` on media uploads is a pre-check warning, not blocker. Posts scheduled fine.
-
-**Fanvue tokens storage**: stored in Supabase `fanvue_tokens` table (id='singleton'), NOT in .env. Auth script: `npm run fanvue:auth` opens browser → Railway webhook catches callback → saves to Supabase.
-
-**Key files to reference in new session:**
-- `MORNING_QUESTIONS.md` — **START HERE** — Sprint 2 kickoff checklist
-- `CLAUDE.md` v5.2 — thin overview (references Obsidian vault)
-- `obsidian/blondeshell-brain/APIs/*.md` — full API references
-- `package.json` — all npm scripts (38 total after v5.2)
-- `/root/.claude/plans/soft-snuggling-lynx.md` — full v5.2 plan + Year 1 roadmap
-
----
-
-## 🧪 KEY TEST RESULTS FROM TODAY
-
-**Fanvue multipart upload E2E (from user terminal):**
-```
-[fanvue] Session created — uploadId: 54b418bb-50ee-4ccc-9...
-[fanvue] Uploading chunk 1/1 (7004KB)
-[fanvue] Processing — uuid: 54b418bb-50ee-4ccc-93e5-e3609d046c94 status: processing
-[fanvue] Media status: ready
-✅ Upload complete! mediaUuid: 54b418bb-50ee-4ccc-93e5-e3609d046c94
+# 6 videos + Publer schedule (Thu/Fri/Sat)
+npm run schedule:videos -- --bypass-qa
+# Expect: 30-60 min runtime, ~$2-3 fal.ai cost
+# Output: /tmp/night_session/videos.json
 ```
 
-**Fanvue API visibility:**
-- `/posts?limit=5` → 15 posts visible
-- `/media?limit=3` → 15 items visible
-- Token refresh flow working
-
-**ffmpeg on user's Mac:** v8.1 installed ✓
+Reason for bypass: user visually reviewed all 12 cached images in `/tmp/night_session/` via `open /tmp/night_session/*.png`. QA is redundant.
 
 ---
 
-## 🚨 KNOWN ISSUES / TODOs
+## BUGS ENCOUNTERED TODAY (for learning_agent)
 
-1. **Instagram validity=false** — Publer returns this warning but posts are scheduled. Need to verify on Apr 20 that posts actually publish. If they fail, may need to adjust image aspect ratio / size in `lib/image_convert.js`.
-
-2. **Stale failed post in Publer** — `"I can't write content..."` — user needs to delete manually.
-
-3. **Bio API gap** — Publer doesn't return bio content. Future: integrate Instagram Graph API + TikTok API directly for bio checks.
-
-4. **nsfwjs not integrated** — Sprint 2 item, reduces Claude vision QA cost. Low priority, Claude vision works.
-
-5. **deepface not integrated** — Python-only, no good JS equivalent. Using Claude vision for face similarity instead.
+1. **nsfwjs MobileNetV2/InceptionV3 too aggressive for fitness brand** — every brand-aligned image scored Sexy>=0.6. Symptom: 0/11 approved. Don't swap Claude vision for pretrained NSFW without brand-specific calibration.
+2. **tfjs-node native compile fails on Node 25 + paths with spaces** — `/Users/yonilevy/Downloads/blondeshell_archive 2/` has a space; clang++ args got split. Switched to pure-JS tfjs then reverted entirely.
+3. **Claude vision requires HTTPS URLs** — `type: 'url', source:` cannot accept local filesystem paths. Upload to Supabase first.
+4. **Claude vision intermittent "Unable to connect to remote server"** — 2/11 images hit this in night run. Transient. Need retry wrapper in `lib/qa_gate.js` (added to Sprint 3 TODO).
+5. **3 silently-broken crons** (`runAgent` on lib/ files) — caught before Railway deploy activated them.
+6. **Twitter silently absent from Publer schedule** despite account being connected. Night session added Twitter posts but none visible. Need to debug `getPlatformIds().twitter` return shape.
 
 ---
 
-## 💰 COST TRACKING
+## LAUNCH COUNTDOWN
 
-Today's spend: ~$0.10 (3 fal.ai images + ElevenLabs credits + Claude)
-Monthly budget (Month 1): ~$575-675
-Revenue target Month 1: $1,200-2,300 net
+**Original plan**: Apr 24 content launch + Apr 28 full autonomy launch (9 days).
+**Revised plan (5h days + parallel nights)**: Apr 24 = full autonomy + content launch same day (6 days).
 
----
+**Progress**: 60% -> **~75%** today. Ahead of plan.
 
-*Session ended 2026-04-18. Resume: `npm run readiness` to confirm state, then `npm run schedule:night` for night batch.*
-
----
-
-## 🌙 NIGHT-SESSION RESULTS (Apr 18, run from user's Mac)
-
-- Generated: 12/12
-- Approved: 4/12 (beach_playful, gym_athletic, gym_stretching, street_sporty)
-- Rejected: 8/12 → 3× NSFW T2, 4× identity <0.85, 1× brand fit
-- Scheduled in Publer: **8/8** approved × 2 platforms (Tue+Wed, TT+IG). Twitter was missing from this run — fixed tonight.
-- Stale Publer post: NOT visible in schedule — no cleanup needed.
-
-## 🛠️ EOD CODE CHANGES (Apr 18, this session, on branch `claude/push-to-github-PjFnX`)
-
-1. **`scripts/night_session_batch.mjs`** — prompt rewrites, LA hashtags, Twitter integration, IG geo-tag:
-   - Added `IDENTITY_CUE` constant → injected into all 12 SETTINGS_MOODS prompts (bright green eyes visible, platinum blonde, no face-covering sunglasses).
-   - Rewrote all 12 prompts to remove bikini tops / oversized sleep shirts / sunglasses (T1-safe + brand-aligned).
-   - Added `LA_TAGS_TT / LA_TAGS_IG / LA_TAGS_TW` and appended to all captions.
-   - Added `CAPTIONS_TWITTER[12]` + Twitter scheduling block (posts go out at `hour+2` UTC, same image as IG/TT).
-   - Imports + calls `searchInstagramLocation('Los Angeles, California')` — auto geo-tag every IG post. Falls back to `INSTAGRAM_LA_LOCATION_ID` env var if API search fails.
-2. **`lib/publer.js`** — IG location support + search helper:
-   - `buildInstagramPhoto` / `buildInstagramVideo` accept `locationId`, emit `details: { location_id }`.
-   - `schedulePost({ …, locationId })` threads it through.
-   - New `searchInstagramLocation(query, accountId)` — caches results in-memory, tolerant of API shape variance.
-3. **`obsidian/blondeshell-brain/APIs/publer.md`** — Twitter row added (new active account). Removed hard "do not post" note.
-4. **`MORNING_QUESTIONS.md`** — added A6 (Monday post count mystery), A7 (Twitter status), LOCKED DECISIONS section (B1-B4 answered), Sprint 1 night results summary.
-
-## 🎯 SPRINT 2 PLAN (Apr 19) — locked decisions from owner
-
-### B1. nsfwjs integration — **DO TOMORROW** (day work)
-Replace Claude vision in `lib/qa_gate.js` NSFW step with local `nsfwjs` classifier. ~$18/mo savings.
-- `npm i nsfwjs @tensorflow/tfjs-node` (add to package.json)
-- New `lib/nsfw_classifier.js` with `classifyImage(buffer)` → `{ class, prob }` and T1/T2/T3 gate.
-- Wire into `qa_gate.runFullQA` — use nsfwjs for NSFW, KEEP Claude vision for identity + brand fit (no local face-similarity model good enough yet).
-- Test: re-run QA on the 8 rejected night-session images, compare verdicts.
-- Est: 2-3h.
-
-### B2. Voice — **KEEP** current voice ID `briGJOLAce4pTnmxMbbi`. No action.
-
-### B3. First vlog test (30s) — **YES** (night of Sprint 2)
-- `node -e "import('./lib/vlog.js').then(m => m.generateVlog({ arcId: 'arc_001', duration: 30 }))"`
-- Validates pipeline: script (Claude) → narration (ElevenLabs) → start frames (Seedream) → i2v clips (Kling v3) → talking head (Kling lipsync) → ffmpeg stitch.
-- Cost: ~$0.50. Risk: first real test, likely needs debugging.
-
-### B4. Sprint 2 night batch — **FULL** (18 images + 6 videos + 1 vlog)
-- 18 fresh images (6 new settings × 3 moods OR 6 settings × 3 time-of-day). Use the improved prompts from tonight.
-- 6 short videos via Kling v3 i2v from approved start frames (standard/image-to-video, 5s each).
-- 1× 30s vlog (see B3).
-- Schedule Thu-Sat for all 3 platforms (TT + IG + Twitter).
-- Cost: ~$3-5 total.
-
-### Other Sprint 2 day tasks (in order)
-1. **Morning: verify Monday posts publishing** — check Publer → Published, TikTok, IG. Per A6, investigate why only 3 of 6 Monday posts visible.
-2. **nsfwjs integration** (B1, 2-3h).
-3. **Re-run `npm run schedule:night`** with tightened prompts if approved count from last night feels thin — expect ~75% approval.
-4. **Night: full batch** (B4).
+### Remaining Sprints
+- **Sprint 3 (Apr 20)**: Activate Substy Playwright service on Hetzner VPS (scaffolding already in `services/substy/`). DM send capability (currently only read conversations/subscribers/settings). Deploy. Rate limiting. Anti-bot.
+- **Sprint 4 (Apr 21)**: Fanvue webhook -> DM -> PPV flow E2E. `strategy_agent` running arc_001 progression. CRM segment routing (whale/active/new/at-risk/churned).
+- **Sprint 5 (Apr 22)**: Full 24h dry run #1. Fix whatever breaks. Load test — 100 DMs / 30 posts / 5 PPVs concurrent.
+- **Sprint 6 (Apr 23)**: Pre-launch QA. Red alert playbook. Second 24h dry run. Final `npm run readiness`.
+- **Apr 24 TARGET**: FULL AUTONOMY + CONTENT LAUNCH.
+- **Apr 25-27**: Babysit 3 days, turn mistakes into `learning_loop` rules.
 
 ---
 
-*Updated 2026-04-18 EOD. Resume in morning: read MORNING_QUESTIONS.md first, then this file's Sprint 2 section.*
+## STATE AT EOD APR 19
+
+**Railway**: deployed, listening on :8080, crons live. URL: `hopeful-freedom-production-554a.up.railway.app`.
+
+**Publer scheduled (Apr 20-22, visible in IL time)**:
+- Mon Apr 20 IL: 3 posts (Sprint 1 morning leg)
+- Tue Apr 21 IL: 7 posts (Sprint 1 evening leg wrapped into Tue IL + 4 night-session Tue)
+- Wed Apr 22 IL: 4 posts (night-session)
+- Thu-Sat: empty — will be filled by `schedule:videos --bypass-qa`
+
+**Fanvue**: tokens fresh in Supabase singleton. Webhook endpoint `/fanvue` hardened (idempotency + retry + rate limit + signature).
+
+**ENV on Mac (.env)**: ANTHROPIC, FAL, SUPABASE_*, PUBLER, FANVUE_*, ELEVENLABS, RESEND all set. SUBSTY_* still placeholder until Sprint 3 Hetzner deploy.
+
+**ENV on Railway**: needs audit tomorrow. Secrets may not be synced — `railway variables` should match `.env`. `FANVUE_WEBHOOK_SECRET` probably unset (webhook will pass-through verification until set).
+
+---
+
+## KEY FILES MODIFIED TODAY
+
+- `webhook/server.js` — cron fixes + idempotency + rate limit + reqId + sbRetry
+- `lib/alerts.js` (new)
+- `agents/alert_checker.js` (new)
+- `lib/backup_queue.js` (new)
+- `agents/backup_check_agent.js` (new)
+- `scripts/schedule_videos_batch.mjs` (new)
+- `scripts/test_webhook_signature.mjs` (new)
+- `scripts/seed_backup_queue.mjs` (new)
+- `scripts/test_alerts.mjs` (new)
+- `scripts/night_session_batch.mjs` — --skip-generate now uploads cached to Supabase
+- `supabase/migrations/20260419000001_alerts.sql` (new)
+- `supabase/migrations/20260419000002_backup_queue.sql` (new)
+- `package.json` — + `test:webhook`, `test:alerts`, `queue:seed`, `queue:status`, `schedule:videos`
+
+---
+
+## FIRST ACTION FOR NEW SESSION (Apr 20 morning)
+
+1. Ask user: did `schedule:videos --bypass-qa` complete last night? How many videos scheduled?
+2. Check `/tmp/night_session/videos.json` — report approved/failed breakdown.
+3. Check Publer Scheduled tab for Thu/Fri/Sat — should show 6 videos x 3 platforms = up to 18 posts.
+4. Investigate **Twitter silent drop** — debug `getPlatformIds().twitter` return shape in `lib/publer.js`.
+5. Verify Railway ENV has all secrets.
+6. Run `supabase db push` for the 2 new migrations (alerts + backup_queue).
+7. Begin Sprint 3: Substy Playwright DM send capability + Hetzner deploy.
+
+---
+
+*Session ended 2026-04-19 EOD. Resume: read this file first, then `MORNING_QUESTIONS.md` if exists, then ask user for schedule:videos result.*
