@@ -150,17 +150,21 @@ if (!skipGenerate) {
   }
   console.log(`\nGenerated: ${generated.length}/${SETTINGS_MOODS.length}\n`);
 } else {
-  console.log('═══ Step 1: Skipped (--skip-generate) ═══\n');
-  // Load from disk
+  console.log('═══ Step 1: Skipped (--skip-generate) — uploading cached to Supabase for QA ═══\n');
   for (let i = 0; i < SETTINGS_MOODS.length; i++) {
     const { setting, mood } = SETTINGS_MOODS[i];
     const label = `${setting}_${mood}`;
     const localPath = `${OUTPUT_DIR}/${label}.png`;
-    if (existsSync(localPath)) {
-      generated.push({ index: i, setting, mood, label, localPath, ok: true });
+    if (!existsSync(localPath)) continue;
+    try {
+      const url = await uploadToSupabase(localPath, `cached_${label}`);
+      generated.push({ index: i, setting, mood, label, localPath, url, ok: true });
+      console.log(`   ✅ uploaded ${label}`);
+    } catch (err) {
+      console.error(`   ❌ upload failed for ${label}: ${err.message}`);
     }
   }
-  console.log(`Found ${generated.length} cached images\n`);
+  console.log(`\nFound ${generated.length} cached images (all uploaded)\n`);
 }
 
 // ─── Step 2: QA gate ───
