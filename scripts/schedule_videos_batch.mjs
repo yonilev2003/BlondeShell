@@ -1,12 +1,14 @@
 import 'dotenv/config';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import { generateVideo } from '../lib/generate_video.js';
 import { getPlatformIds, uploadMediaFromUrl, schedulePost } from '../lib/publer.js';
 
 const RESULTS = '/tmp/night_session/results.json';
+const NIGHT_DIR = '/tmp/night_session';
 const OUT = '/tmp/night_session/videos.json';
 const MAX_VIDEOS = parseInt(process.env.VIDEO_COUNT || '6', 10);
+const BYPASS_QA = process.argv.includes('--bypass-qa') || process.argv.includes('--use-cached');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -61,19 +63,40 @@ async function uploadVideoToSupabase(videoUrl, name) {
 }
 
 console.log('\n━━━ NIGHT VIDEOS — Sprint 2 ━━━\n');
-console.log(`Time: ${new Date().toISOString()}\n`);
+console.log(`Time: ${new Date().toISOString()}`);
+console.log(`Bypass QA: ${BYPASS_QA}\n`);
 
-if (!existsSync(RESULTS)) {
-  console.error(`Missing ${RESULTS} — run 'npm run schedule:night' first`);
-  process.exit(1);
-}
-
-const nightResults = JSON.parse(readFileSync(RESULTS, 'utf-8'));
-const approved = (nightResults.items || []).filter(i => i.qa?.approved);
-console.log(`Approved images in night_session: ${approved.length}`);
-if (approved.length === 0) {
-  console.error('No approved images to convert to video. Re-run QA first.');
-  process.exit(1);
+let approved;
+if (BYPASS_QA) {
+  const pngs = readdirSync(NIGHT_DIR).filter(f => f.endsWith('.png'));
+  if (pngs.length === 0) {
+    console.error(`No PNGs in ${NIGHT_DIR}`);
+    process.exit(1);
+  }
+  console.log(`Bypass QA — using ${pngs.length} cached images directly`);
+  approved = [];
+  for (const f of pngs) {
+    const name = f.replace(/\.png$/, '');
+    const buf = readFileSync(`${NIGHT_DIR}/${f}`);
+    const path = `videos-src/${Date.now()}_${name}.png`;
+    await supabase.storage.from('content').upload(path, buf, { contentType: 'image/png', upsert: true });
+    const { data: { publicUrl } } = supabase.storage.from('content').getPublicUrl(path);
+    approved.push({ name, url: publicUrl });
+    console.log(`  ✅ ${name}`);
+  }
+  console.log();
+} else {
+  if (!existsSync(RESULTS)) {
+    console.error(`Missing ${RESULTS} — run 'npm run schedule:night' first, or pass --bypass-qa`);
+    process.exit(1);
+  }
+  const nightResults = JSON.parse(readFileSync(RESULTS, 'utf-8'));
+  approved = (nightResults.items || []).filter(i => i.qa?.approved);
+  console.log(`Approved images from QA: ${approved.length}`);
+  if (approved.length === 0) {
+    console.error('No approved images. Re-run QA first or use --bypass-qa.');
+    process.exit(1);
+  }
 }
 
 const seenSettings = new Set();
