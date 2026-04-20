@@ -44,6 +44,7 @@
     "publer:cleanup": "node scripts/cleanup_failed_monday.mjs",
     "schedule:monday": "node scripts/schedule_monday_v2.mjs",
     "schedule:night": "node scripts/night_session_batch.mjs",
+    "schedule:videos": "node scripts/schedule_videos_batch.mjs",
     "test:fal": "node scripts/test_fal_generate.mjs",
     "test:voice": "node scripts/test_voice.mjs",
     "test:fanvue": "node scripts/test_fanvue_upload.mjs",
