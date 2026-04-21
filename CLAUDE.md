@@ -1,5 +1,10 @@
-# BlondeShell — CLAUDE.md v5.2
-# Full Autonomy Architecture | 2026-04-18
+# BlondeShell — CLAUDE.md v5.3
+# Full Autonomy Architecture | 2026-04-21
+
+## FIRST READ: `LESSONS.md`
+Before any non-trivial task, scan `./LESSONS.md` for keywords in your task. 6+ real pitfalls logged. Prevents re-hitting known bugs (NSFW model calibration, tfjs native compile, Claude vision HTTPS requirement, silent cron failures, Publer timezone display, Twitter silent-skip).
+
+`context-hydrator` subagent runs on session start (via SessionStart hook) and surfaces relevant lessons automatically.
 
 ## SECOND BRAIN — Obsidian Vault
 ```
