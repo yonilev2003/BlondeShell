@@ -1,130 +1,111 @@
 # BlondeShell — Session Progress
-## Date: 2026-04-19 EOD | Status: Sprint 2 core DONE (webhook+alerts+queue deployed) · Night batch partial (videos pending from Mac)
+## Date: 2026-04-21 EOD (Tue) | Status: Plan LOCKED for Apr 22-25 full autonomy push
 
 ---
 
 ## CURRENT BRANCH
-`claude/review-tasks-timeline-HqCaG` — HEAD: `16c10fd`. Pushed. Not merged to main yet.
-
-## TOMORROW (Apr 20) FIRST ACTIONS
-1. Verify last night's videos uploaded (if user ran `schedule:videos --bypass-qa` before sleep).
-2. Verify Monday's 6 posts actually went live on IG + TikTok (these were scheduled Apr 18 — A4 from MORNING_QUESTIONS).
-3. Twitter verification — **no Twitter posts visible in Publer Scheduled tab** despite Twitter being a connected account. Need to audit `getPlatformIds()` — is `accounts.twitter` being returned? If not → night_session is silently dropping Twitter.
+`claude/review-tasks-timeline-HqCaG` — HEAD: `15aaa9b`. Pushed. Not merged to main yet.
+Full plan: `/root/.claude/plans/vivid-sparking-pike.md`
 
 ---
 
-## ✅ COMPLETED TODAY (Apr 19, Sprint 2)
+## WHERE WE ARE (as of Apr 21 EOD)
 
-### Core dev (day)
-- **Railway deploy** — `railway up` succeeded. Health check passed. Server `[webhook] BlondeShell webhook server listening on :8080`. All crons registered.
-- **Webhook cron bugfix** (`1396aea`) — 3 silently-broken crons (`pipeline`, `inspiration_engine`, `vlog_pipeline`) were calling `runAgent()` on files that live in `lib/`, not `agents/`. Added `runLib(libFile, fnName, argsJson)` helper in `webhook/server.js`. Would have been silent post-launch failures.
-- **nsfwjs integration — ABORTED + REVERTED** (`a6abd89`). Spent half the day on it. MobileNetV2 + InceptionV3 both classified every brand-aligned image (beach bikini, gym, athletic wear) as T2=sexy. Wrong calibration for our brand aesthetic. Lesson learned: validate pretrained models on YOUR dataset BEFORE integration. Kept Claude vision as QA classifier. ~$18/mo savings abandoned — not worth miscalibrating the gate.
-- **A6 mystery resolved** — Publer displays in **Israel time (UTC+3)**, not UTC, not LA. All 14 posts scheduled intact; Mon 6 Sprint 1 posts split as 3 Mon IL + 3 Tue IL due to late-UTC times pushing past midnight IL.
+### What's LIVE and working
+- Railway webhook: listening on :8080, crons registered, /health passes.
+- Publer: Monday (Apr 20) 6 posts went live on IG + TikTok. Tue + Wed scheduled from night batch. **BUT** user says performance is awful (unverified — no analytics poller yet).
+- Fanvue webhook hardened: idempotency + retry + rate limit + request IDs (Agent A, commit `687afcb`).
+- Alerts module built (Agent B) — Resend integration, red alert conditions. **NOT YET WIRED** to cron.
+- Backup content queue built (Agent C) — table + agent + seed script. **NOT YET SEEDED**.
+- Video batch script `npm run schedule:videos --bypass-qa` created. User ran it Sunday — 6 Kling i2v scheduled Thu/Fri/Sat.
 
-### Parallel night agents (3 lanes, committed in `687afcb` + `8ef60b3` + `bdf193a`)
-- **Agent A — Fanvue webhook hardening**: idempotency (sha256 key from `event|subscriber_id|timestamp`, stored in `webhook_events` with PK-conflict-ignore pattern), per-request UUID IDs in all logs, `sbRetry` wrapper on every Supabase call (3x, 500/1000/2000ms backoff), signature verification test (`npm run test:webhook` — 3/3 passing: valid sig 200, invalid 401, no secret 200), in-memory rate limit 10 `message.received`/60s per subscriber_id -> 429.
-- **Agent B — Alerts module**: `lib/alerts.js` with `sendAlert({level, title, body, metadata})`, `sendRedAlert`, `sendDailyDigest`. Resend integration, Supabase `alert_log` table, dry-run mode via `ALERT_DRY_RUN=true`. `agents/alert_checker.js` wires 6 red-alert conditions per CLAUDE.md (face similarity <0.85 >=3 hits, Fanvue flagged content, Claude spend >$150/mo, pipeline stall 6h, Substy down, Fanvue tokens stale 30d). Migration `20260419000001_alerts.sql`.
-- **Agent C — Backup content queue**: `lib/backup_queue.js` (enqueueContent/dequeueOldest atomic/queueSize/refillFromApproved) + `agents/backup_check_agent.js` (hourly cron, pulls from queue when today's slots < 3, warns at <10, red-alerts at <3). Migration `20260419000002_backup_queue.sql`. Canonical table `content_items` (NOT `generated_content` — agent caught this codebase-wide naming convention).
+### The 3 BLOCKERS stopping full autonomy (discovered Apr 21)
+1. **Substy `sendDM()` is a STUB** — `scripts/dm_processor.js:299` is `console.log("In production this calls Substy API")`. Character cannot reply to DMs.
+2. **`massMessage()` has ZERO callers** — `lib/fanvue.js:324-353` exists but fulfilled DM events never trigger PPV send. **Revenue loop is open-circuit.**
+3. **No analytics poller** — `post_analytics`, `platform_scores`, `hook_performance` tables are empty. "Awful performance" is an unverified feeling.
 
-### Night batch support scripts
-- **`npm run schedule:videos`** (`e14bdbd` + `16c10fd`) — reads `/tmp/night_session/results.json` approved items (or with `--bypass-qa` reads all PNGs in `/tmp/night_session/` directly), generates up to 6 Kling v3 i2v (5s, motion prompts per setting), uploads to Supabase + Publer, schedules Thu-Fri-Sat across TT + IG reel + Twitter.
-- **`--skip-generate` fix for night_session_batch.mjs** (`3f82d42`) — was passing local `/tmp/*.png` paths to Claude vision -> 400 "Only HTTPS URLs are supported". Now uploads cached to Supabase before QA.
-
----
-
-## USER MUST RUN ON MAC (Apr 19 before sleep, or morning)
-
-```bash
-# Git state conflict from earlier runs
-git checkout -- package-lock.json
-git pull origin claude/review-tasks-timeline-HqCaG
-rm -rf node_modules
-npm install
-
-# 6 videos + Publer schedule (Thu/Fri/Sat)
-npm run schedule:videos -- --bypass-qa
-# Expect: 30-60 min runtime, ~$2-3 fal.ai cost
-# Output: /tmp/night_session/videos.json
-```
-
-Reason for bypass: user visually reviewed all 12 cached images in `/tmp/night_session/` via `open /tmp/night_session/*.png`. QA is redundant.
+### Secondary findings
+- **Obsidian vault** architecturally works (read/write functions exist) but `Rules/Patterns/Arcs/Mistakes/Changelog/` folders DON'T EXIST — `learning_agent` never ran. User has Obsidian app installed but not pointed at vault yet.
+- **Twitter silently absent** from Publer schedule despite account being connected. Need to debug `getPlatformIds().twitter` return shape.
+- **dm_processor has no cron** — must be manually started. Required: `cron.schedule('*/5 * * * *', ...)`.
 
 ---
 
-## BUGS ENCOUNTERED TODAY (for learning_agent)
+## DECISIONS LOCKED (Apr 21, from user)
 
-1. **nsfwjs MobileNetV2/InceptionV3 too aggressive for fitness brand** — every brand-aligned image scored Sexy>=0.6. Symptom: 0/11 approved. Don't swap Claude vision for pretrained NSFW without brand-specific calibration.
-2. **tfjs-node native compile fails on Node 25 + paths with spaces** — `/Users/yonilevy/Downloads/blondeshell_archive 2/` has a space; clang++ args got split. Switched to pure-JS tfjs then reverted entirely.
-3. **Claude vision requires HTTPS URLs** — `type: 'url', source:` cannot accept local filesystem paths. Upload to Supabase first.
-4. **Claude vision intermittent "Unable to connect to remote server"** — 2/11 images hit this in night run. Transient. Need retry wrapper in `lib/qa_gate.js` (added to Sprint 3 TODO).
-5. **3 silently-broken crons** (`runAgent` on lib/ files) — caught before Railway deploy activated them.
-6. **Twitter silently absent from Publer schedule** despite account being connected. Night session added Twitter posts but none visible. Need to debug `getPlatformIds().twitter` return shape.
-
----
-
-## LAUNCH COUNTDOWN
-
-**Original plan**: Apr 24 content launch + Apr 28 full autonomy launch (9 days).
-**Revised plan (5h days + parallel nights)**: Apr 24 = full autonomy + content launch same day (6 days).
-
-**Progress**: 60% -> **~75%** today. Ahead of plan.
-
-### Remaining Sprints
-- **Sprint 3 (Apr 20)**: Activate Substy Playwright service on Hetzner VPS (scaffolding already in `services/substy/`). DM send capability (currently only read conversations/subscribers/settings). Deploy. Rate limiting. Anti-bot.
-- **Sprint 4 (Apr 21)**: Fanvue webhook -> DM -> PPV flow E2E. `strategy_agent` running arc_001 progression. CRM segment routing (whale/active/new/at-risk/churned).
-- **Sprint 5 (Apr 22)**: Full 24h dry run #1. Fix whatever breaks. Load test — 100 DMs / 30 posts / 5 PPVs concurrent.
-- **Sprint 6 (Apr 23)**: Pre-launch QA. Red alert playbook. Second 24h dry run. Final `npm run readiness`.
-- **Apr 24 TARGET**: FULL AUTONOMY + CONTENT LAUNCH.
-- **Apr 25-27**: Babysit 3 days, turn mistakes into `learning_loop` rules.
+| Question | Answer |
+|----------|--------|
+| Monday posts — delete or diagnose? | **Diagnose first**. Build poller, get numbers, then decide. |
+| Hetzner or Railway for Substy? | **Railway** (single-vendor, Dockerfile with Playwright image already exists). |
+| Substy 2FA status? | **Unknown** — user checks Google account settings first task Wed morning. |
+| Obsidian app setup? | **Installed, not pointed at vault** — 2-minute setup Wed morning. |
 
 ---
 
-## STATE AT EOD APR 19
+## TOMORROW (Apr 22 Wed) — EXECUTION DAY ONE
 
-**Railway**: deployed, listening on :8080, crons live. URL: `hopeful-freedom-production-554a.up.railway.app`.
+Plan file: `/root/.claude/plans/vivid-sparking-pike.md`
 
-**Publer scheduled (Apr 20-22, visible in IL time)**:
-- Mon Apr 20 IL: 3 posts (Sprint 1 morning leg)
-- Tue Apr 21 IL: 7 posts (Sprint 1 evening leg wrapped into Tue IL + 4 night-session Tue)
-- Wed Apr 22 IL: 4 posts (night-session)
-- Thu-Sat: empty — will be filled by `schedule:videos --bypass-qa`
+### Morning (2h) — Analytics poller
+- Add `getPostAnalytics(jobId)` to `lib/publer.js`
+- Create `agents/analytics_poller.js` (hourly, writes `post_analytics` + `platform_scores`)
+- Wire `cron.schedule('0 * * * *', ...)` in webhook/server.js
+- One-shot run → see Monday's real impressions
 
-**Fanvue**: tokens fresh in Supabase singleton. Webhook endpoint `/fanvue` hardened (idempotency + retry + rate limit + signature).
+### Midday (3h) — Substy sendDM
+- User checks 2FA on Google account (5 min)
+- Implement `sendDM(subscriberId, text, mediaUrl?)` in `services/substy/index.js` with REAL selectors (live browser inspection)
+- `POST /substy/send-dm` endpoint in `services/substy/server.js`
+- `substySendDM(...)` wrapper in `lib/substy_client.js`
 
-**ENV on Mac (.env)**: ANTHROPIC, FAL, SUPABASE_*, PUBLER, FANVUE_*, ELEVENLABS, RESEND all set. SUBSTY_* still placeholder until Sprint 3 Hetzner deploy.
+### Afternoon (1h) — Close the DM loop
+- Replace stub at `scripts/dm_processor.js:299` with real `substySendDM(...)` call
+- After fulfillment (dm_processor.js:130-135) → `substySendDM + massMessage` PPV
+- `cron.schedule('*/5 * * * *', ...)` for dm_processor
 
-**ENV on Railway**: needs audit tomorrow. Secrets may not be synced — `railway variables` should match `.env`. `FANVUE_WEBHOOK_SECRET` probably unset (webhook will pass-through verification until set).
+### Night (parallel agents)
+- Agent A: Substy as 2nd Railway service + deploy
+- Agent B: Obsidian vault init (5 folders + seed R-001..R-005)
+- Agent C: Wire `massMessage()` PPV trigger after fulfillment
 
 ---
 
-## KEY FILES MODIFIED TODAY
+## DAYS AFTER (Apr 23-25)
+
+- **Thu Apr 23**: Monday diagnosis from analytics, PPV E2E, fresh content batch, night dry run #1
+- **Fri Apr 24**: Fix dry run failures, dry run #2, `npm run readiness` 45/45, dry run #3
+- **Sat Apr 25 TARGET**: Full autonomy launch. Flip `content_config.publishing_paused = false`. Monitor COO digest first 24h.
+
+---
+
+## WHAT'S IN THE REPO AS OF 15aaa9b
 
 - `webhook/server.js` — cron fixes + idempotency + rate limit + reqId + sbRetry
-- `lib/alerts.js` (new)
-- `agents/alert_checker.js` (new)
-- `lib/backup_queue.js` (new)
-- `agents/backup_check_agent.js` (new)
-- `scripts/schedule_videos_batch.mjs` (new)
-- `scripts/test_webhook_signature.mjs` (new)
-- `scripts/seed_backup_queue.mjs` (new)
-- `scripts/test_alerts.mjs` (new)
-- `scripts/night_session_batch.mjs` — --skip-generate now uploads cached to Supabase
-- `supabase/migrations/20260419000001_alerts.sql` (new)
-- `supabase/migrations/20260419000002_backup_queue.sql` (new)
-- `package.json` — + `test:webhook`, `test:alerts`, `queue:seed`, `queue:status`, `schedule:videos`
+- `lib/alerts.js` (new) + `agents/alert_checker.js`
+- `lib/backup_queue.js` + `agents/backup_check_agent.js`
+- `scripts/schedule_videos_batch.mjs` (Kling v3 i2v batch)
+- `scripts/test_webhook_signature.mjs` (3/3 passing)
+- `scripts/test_alerts.mjs`, `scripts/seed_backup_queue.mjs`
+- Migrations: `20260419000001_alerts.sql` + `20260419000002_backup_queue.sql`
+- `services/substy/` scaffolding: login + getConversations + getSubscribers + updateSettings. **Missing sendDM.**
 
 ---
 
-## FIRST ACTION FOR NEW SESSION (Apr 20 morning)
+## ENV STATE
 
-1. Ask user: did `schedule:videos --bypass-qa` complete last night? How many videos scheduled?
-2. Check `/tmp/night_session/videos.json` — report approved/failed breakdown.
-3. Check Publer Scheduled tab for Thu/Fri/Sat — should show 6 videos x 3 platforms = up to 18 posts.
-4. Investigate **Twitter silent drop** — debug `getPlatformIds().twitter` return shape in `lib/publer.js`.
-5. Verify Railway ENV has all secrets.
-6. Run `supabase db push` for the 2 new migrations (alerts + backup_queue).
-7. Begin Sprint 3: Substy Playwright DM send capability + Hetzner deploy.
+**Mac (.env)**: ANTHROPIC, FAL, SUPABASE_*, PUBLER, FANVUE_*, ELEVENLABS, RESEND all set.
+**Railway**: needs audit. `FANVUE_WEBHOOK_SECRET` probably unset.
+**Substy on Railway**: not yet deployed. Google email/password env vars needed: `SUBSTY_GOOGLE_EMAIL`, `SUBSTY_GOOGLE_PASSWORD`, `SUBSTY_SERVICE_KEY` (shared with main service).
 
 ---
 
-*Session ended 2026-04-19 EOD. Resume: read this file first, then `MORNING_QUESTIONS.md` if exists, then ask user for schedule:videos result.*
+## FIRST ACTION FOR NEW SESSION (Apr 22 morning)
+
+1. Read this file + `/root/.claude/plans/vivid-sparking-pike.md` (the full plan).
+2. Ask user: 2FA status on Substy Google account?
+3. Ask user: did Obsidian app get pointed at `obsidian/blondeshell-brain/`?
+4. Start with morning block: analytics poller (see plan Day 1 Morning).
+
+---
+
+*Session ended 2026-04-21 EOD. Plan approved. Resume: load plan file first, then verify 2 unknowns with user, then execute.*
