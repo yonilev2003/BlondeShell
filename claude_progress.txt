@@ -1,111 +1,135 @@
 # BlondeShell — Session Progress
-## Date: 2026-04-21 EOD (Tue) | Status: Plan LOCKED for Apr 22-25 full autonomy push
+## Date: 2026-04-21 EOD (Tue) | Status: starter-kit INTEGRATED + Plan REVISED for Apr 22 (4-5h active)
 
 ---
 
 ## CURRENT BRANCH
-`claude/review-tasks-timeline-HqCaG` — HEAD: `15aaa9b`. Pushed. Not merged to main yet.
-Full plan: `/root/.claude/plans/vivid-sparking-pike.md`
+`claude/review-tasks-timeline-HqCaG` — HEAD: `c758362`. Not yet pushed (pending this commit).
+Full plan: `/root/.claude/plans/vivid-sparking-pike.md` (to be updated)
+
+---
+
+## WHAT JUST HAPPENED (Apr 21 evening)
+
+User dropped `starter-kit/` into the repo (commit `ff238e5` on main). I absorbed it into active locations:
+- `.claude/settings.json` — hooks (SessionStart / PostToolUse / Stop)
+- `.claude/agents/{context-hydrator,lesson-extractor,code-reviewer}.md`
+- `.claude/commands/{plan,ship,retro,resume,parallel}.md`
+- `scripts/{session-start,session-retro,lint-check}.sh`
+- `LESSONS.md` at root — seeded with 6 real lessons from Apr 18-19
+- `CLAUDE.md` bumped to v5.3 with pointer to LESSONS.md
+
+`starter-kit/` folder deleted (fully absorbed).
+
+## EFFECT ON WORKFLOW
+
+1. **SessionStart hook** → auto-invokes `context-hydrator` (Haiku) that reads `LESSONS.md` + `claude_progress.txt` + git state → compact brief in main session. No more manual `cat claude_progress.txt` at start.
+2. **Stop hook** → blocks session stop until `lesson-extractor` captures learnings from the transcript into `LESSONS.md`. No more forgotten lessons.
+3. **PostToolUse lint** → runs `scripts/lint-check.sh` after every Edit/Write. Fast-fails on syntax errors.
+4. **`/parallel <branch>`** → creates git worktree + seeds progress file. Replaces risky Agent-tool parallelism (which had file-conflict issues today).
+5. **`/ship`** → lint → typecheck → test → commit → PR, one command.
+6. **`/plan`** → Goal→Plan→Tradeoffs→LESSONS-check→Confirmation structure.
+7. **`/retro`** + **`/resume`** → manual triggers for the two auto-subagents.
 
 ---
 
 ## WHERE WE ARE (as of Apr 21 EOD)
 
 ### What's LIVE and working
-- Railway webhook: listening on :8080, crons registered, /health passes.
-- Publer: Monday (Apr 20) 6 posts went live on IG + TikTok. Tue + Wed scheduled from night batch. **BUT** user says performance is awful (unverified — no analytics poller yet).
-- Fanvue webhook hardened: idempotency + retry + rate limit + request IDs (Agent A, commit `687afcb`).
-- Alerts module built (Agent B) — Resend integration, red alert conditions. **NOT YET WIRED** to cron.
-- Backup content queue built (Agent C) — table + agent + seed script. **NOT YET SEEDED**.
-- Video batch script `npm run schedule:videos --bypass-qa` created. User ran it Sunday — 6 Kling i2v scheduled Thu/Fri/Sat.
+- Railway webhook: listening on :8080, crons registered, /health passes
+- Publer: Monday (Apr 20) 6 posts went live on IG + TikTok. Tue + Wed scheduled. Performance unverified
+- Fanvue webhook hardened (idempotency + retry + rate limit + reqIds)
+- Alerts module built — NOT YET WIRED to cron
+- Backup content queue built — NOT YET SEEDED
+- Video batch script (`npm run schedule:videos --bypass-qa`)
+- **NEW**: starter-kit session management fully integrated
 
-### The 3 BLOCKERS stopping full autonomy (discovered Apr 21)
-1. **Substy `sendDM()` is a STUB** — `scripts/dm_processor.js:299` is `console.log("In production this calls Substy API")`. Character cannot reply to DMs.
-2. **`massMessage()` has ZERO callers** — `lib/fanvue.js:324-353` exists but fulfilled DM events never trigger PPV send. **Revenue loop is open-circuit.**
-3. **No analytics poller** — `post_analytics`, `platform_scores`, `hook_performance` tables are empty. "Awful performance" is an unverified feeling.
+### The 3 BLOCKERS stopping full autonomy (unchanged)
+1. Substy `sendDM()` is a stub — character cannot reply to DMs
+2. `massMessage()` has ZERO callers — no PPV → no revenue
+3. No analytics poller → all analytics tables empty → "awful performance" unverified
 
-### Secondary findings
-- **Obsidian vault** architecturally works (read/write functions exist) but `Rules/Patterns/Arcs/Mistakes/Changelog/` folders DON'T EXIST — `learning_agent` never ran. User has Obsidian app installed but not pointed at vault yet.
-- **Twitter silently absent** from Publer schedule despite account being connected. Need to debug `getPlatformIds().twitter` return shape.
-- **dm_processor has no cron** — must be manually started. Required: `cron.schedule('*/5 * * * *', ...)`.
+### Secondary findings (unchanged)
+- Obsidian vault folders don't exist yet (need seeding)
+- Twitter silently absent from Publer schedule
+- dm_processor has no cron
 
 ---
 
-## DECISIONS LOCKED (Apr 21, from user)
+## DECISIONS LOCKED (Apr 21)
 
 | Question | Answer |
 |----------|--------|
-| Monday posts — delete or diagnose? | **Diagnose first**. Build poller, get numbers, then decide. |
-| Hetzner or Railway for Substy? | **Railway** (single-vendor, Dockerfile with Playwright image already exists). |
-| Substy 2FA status? | **Unknown** — user checks Google account settings first task Wed morning. |
-| Obsidian app setup? | **Installed, not pointed at vault** — 2-minute setup Wed morning. |
+| Monday posts — delete or diagnose? | **Diagnose first**. Build poller, get numbers |
+| Hetzner or Railway for Substy? | **Railway** (single-vendor, Playwright Docker image exists) |
+| Substy 2FA status? | **Unknown** — user checks Google account first thing Wed |
+| Obsidian app setup? | **Installed, not pointed at vault** — 2-min setup Wed |
 
 ---
 
-## TOMORROW (Apr 22 Wed) — EXECUTION DAY ONE
+## REVISED WED APR 22 PLAN (≤5h active)
 
-Plan file: `/root/.claude/plans/vivid-sparking-pike.md`
+### 🚀 Setup (15 min) — first thing in the morning
+- Restart Claude Code (hooks only load at startup — crucial for SessionStart to fire)
+- Open Obsidian app → File → Open Vault → `obsidian/blondeshell-brain/`
+- User checks 2FA status on Substy Google account (5 min)
 
-### Morning (2h) — Analytics poller
+### 🌅 Morning (1.5h, was 2h) — Analytics poller
+**Savings from starter-kit:** `context-hydrator` auto-loads state, no manual catch-up (~15 min saved)
 - Add `getPostAnalytics(jobId)` to `lib/publer.js`
-- Create `agents/analytics_poller.js` (hourly, writes `post_analytics` + `platform_scores`)
-- Wire `cron.schedule('0 * * * *', ...)` in webhook/server.js
-- One-shot run → see Monday's real impressions
+- Create `agents/analytics_poller.js` — hourly writes to `post_analytics` + `platform_scores`
+- Wire `cron.schedule('0 * * * *', ...)` in `webhook/server.js`
+- One-shot run on Monday's posts → finally see real impressions
+- `/ship` commits it all in one flow
 
-### Midday (3h) — Substy sendDM
-- User checks 2FA on Google account (5 min)
-- Implement `sendDM(subscriberId, text, mediaUrl?)` in `services/substy/index.js` with REAL selectors (live browser inspection)
+### ☀️ Midday (1.75h, was 3h) — Substy sendDM
+**Savings from starter-kit:** `/parallel substy-selectors` session in separate worktree inspects Substy live DOM without blocking main session (~45 min saved)
+- Main session: implement `sendDM(subscriberId, text, mediaUrl?)` in `services/substy/index.js`
 - `POST /substy/send-dm` endpoint in `services/substy/server.js`
 - `substySendDM(...)` wrapper in `lib/substy_client.js`
+- Parallel worktree (runs in separate terminal): live Substy session → screenshot real selectors → commit to a `substy-selectors` branch, merge to main
 
-### Afternoon (1h) — Close the DM loop
-- Replace stub at `scripts/dm_processor.js:299` with real `substySendDM(...)` call
-- After fulfillment (dm_processor.js:130-135) → `substySendDM + massMessage` PPV
-- `cron.schedule('*/5 * * * *', ...)` for dm_processor
+### 🌆 Afternoon (45 min, was 1h) — Close the DM loop
+**Savings from starter-kit:** `/ship` handles lint+test+commit, `code-reviewer` catches bugs before commit
+- Replace stub at `scripts/dm_processor.js:299` with `substySendDM(...)`
+- Wire `dm_processor.js:130-135` to send PPV after fulfillment
+- Add `cron.schedule('*/5 * * * *', ...)` for dm_processor
 
-### Night (parallel agents)
-- Agent A: Substy as 2nd Railway service + deploy
-- Agent B: Obsidian vault init (5 folders + seed R-001..R-005)
-- Agent C: Wire `massMessage()` PPV trigger after fulfillment
+### 🌙 Night (runs autonomously, user sleeps) — 3 `/parallel` sessions
+Each in its own git worktree → zero file conflicts:
+- `/parallel substy-railway-deploy` — Substy as 2nd Railway service
+- `/parallel obsidian-seed` — init vault folders + seed baseline rules
+- `/parallel ppv-loop` — wire `massMessage()` after fulfillment
+
+### TOTAL ACTIVE TIME: ~4.25h (target was ≤5h ✅)
 
 ---
 
-## DAYS AFTER (Apr 23-25)
+## THU-SAT UNCHANGED FROM ORIGINAL PLAN
 
 - **Thu Apr 23**: Monday diagnosis from analytics, PPV E2E, fresh content batch, night dry run #1
 - **Fri Apr 24**: Fix dry run failures, dry run #2, `npm run readiness` 45/45, dry run #3
-- **Sat Apr 25 TARGET**: Full autonomy launch. Flip `content_config.publishing_paused = false`. Monitor COO digest first 24h.
-
----
-
-## WHAT'S IN THE REPO AS OF 15aaa9b
-
-- `webhook/server.js` — cron fixes + idempotency + rate limit + reqId + sbRetry
-- `lib/alerts.js` (new) + `agents/alert_checker.js`
-- `lib/backup_queue.js` + `agents/backup_check_agent.js`
-- `scripts/schedule_videos_batch.mjs` (Kling v3 i2v batch)
-- `scripts/test_webhook_signature.mjs` (3/3 passing)
-- `scripts/test_alerts.mjs`, `scripts/seed_backup_queue.mjs`
-- Migrations: `20260419000001_alerts.sql` + `20260419000002_backup_queue.sql`
-- `services/substy/` scaffolding: login + getConversations + getSubscribers + updateSettings. **Missing sendDM.**
-
----
-
-## ENV STATE
-
-**Mac (.env)**: ANTHROPIC, FAL, SUPABASE_*, PUBLER, FANVUE_*, ELEVENLABS, RESEND all set.
-**Railway**: needs audit. `FANVUE_WEBHOOK_SECRET` probably unset.
-**Substy on Railway**: not yet deployed. Google email/password env vars needed: `SUBSTY_GOOGLE_EMAIL`, `SUBSTY_GOOGLE_PASSWORD`, `SUBSTY_SERVICE_KEY` (shared with main service).
+- **Sat Apr 25 TARGET**: Full autonomy launch. Flip `content_config.publishing_paused = false`. Monitor COO first 24h
 
 ---
 
 ## FIRST ACTION FOR NEW SESSION (Apr 22 morning)
 
-1. Read this file + `/root/.claude/plans/vivid-sparking-pike.md` (the full plan).
-2. Ask user: 2FA status on Substy Google account?
-3. Ask user: did Obsidian app get pointed at `obsidian/blondeshell-brain/`?
-4. Start with morning block: analytics poller (see plan Day 1 Morning).
+When Claude Code restarts:
+1. SessionStart hook fires → context-hydrator runs automatically
+2. Hydrator reports: "Last session: 2026-04-21 EOD | Resume: analytics poller"
+3. Ask user: 2FA status on Substy Google account?
+4. Ask user: Obsidian vault pointed now?
+5. Start with morning block: `getPostAnalytics` in publer.js
 
 ---
 
-*Session ended 2026-04-21 EOD. Plan approved. Resume: load plan file first, then verify 2 unknowns with user, then execute.*
+## ENV STATE
+
+**Mac (.env)**: ANTHROPIC, FAL, SUPABASE_*, PUBLER, FANVUE_*, ELEVENLABS, RESEND set.
+**Railway**: needs audit. `FANVUE_WEBHOOK_SECRET` probably unset.
+**Substy**: not deployed yet. Needs `SUBSTY_GOOGLE_EMAIL`, `SUBSTY_GOOGLE_PASSWORD`, `SUBSTY_SERVICE_KEY` on Railway.
+
+---
+
+*Session ended 2026-04-21 EOD. starter-kit integrated. Plan revised to ≤5h for Wed. Resume: restart Claude Code to activate hooks.*
