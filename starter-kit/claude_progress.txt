@@ -1,0 +1,18 @@
+# claude_progress.txt
+
+# Rolling session state. Updated at Stop hook.
+# Format: most recent session at top.
+# Keep ≤100 lines total; trim older sessions.
+
+---
+
+## [YYYY-MM-DD HH:MM] Session <N>
+**Goal:** <one line>
+**Status:** <in-progress | blocked | done>
+**Last completed:** <what was finished>
+**Next action:** <exactly what to do in the next session>
+**Open questions:** <decisions needed>
+**Modified files:** <list>
+**Branch:** <name>
+
+---
