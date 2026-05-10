@@ -49,7 +49,11 @@
     "test:fanvue": "node scripts/test_fanvue_upload.mjs",
     "test:fanvue-api": "node scripts/test_fanvue_api.mjs",
     "check:bios": "node scripts/check_bios.mjs",
-    "test:nsfw": "node scripts/test_nsfw_classifier.mjs"
+    "test:nsfw": "node scripts/test_nsfw_classifier.mjs",
+    "audit:accounts": "node scripts/account_health_audit.mjs",
+    "test:israel": "node scripts/test_israel_firewall.mjs",
+    "warmup:pool": "node scripts/warmup_backup_pool.mjs",
+    "birthday:check": "node -e \"import('./lib/birthday_arc.js').then(m => console.log(JSON.stringify({ days: m.daysUntilBirthday(), arc: m.getArcDay(), brief: m.briefForArcDay() }, null, 2)))\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

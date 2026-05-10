@@ -1,0 +1,63 @@
+{
+  "_comment": "Locked bio templates per v3.1 Appendix A. Age=21 until 2026-06-01 birthday; lib/birthday_arc.js triggers age-flip 21→22 on Day +1 (June 2).",
+  "version": "1.0",
+  "current_age": 21,
+  "next_age": 22,
+  "age_flip_date": "2026-06-02",
+  "tagline": "100% AI, 100% me ✨",
+  "brand_inquiries_email": "shellvibes.official@proton.me",
+  "platforms": {
+    "instagram": {
+      "handle": "imtheblondeshell",
+      "char_limit": 150,
+      "bio": "Blond Shell ✨ AI model · 21 · LA\nfitness · gaming · beach 🌊\nsingle 💌\nbeacons.ai/blondeshell",
+      "bio_after_flip": "Blond Shell ✨ AI model · 22 · LA\nfitness · gaming · beach 🌊\nsingle 💌\nbeacons.ai/blondeshell",
+      "ai_disclosure_required": true,
+      "notes": "Meta AI label toggle ON every upload (R-019). Bio must contain 'AI-generated'."
+    },
+    "tiktok": {
+      "handle": "itstheblondeshell",
+      "char_limit": 80,
+      "bio": "21 · LA · AI fitness model 🤖\ngaming · beach 🌊\nfanvue.com/blondeshell 💌",
+      "bio_after_flip": "22 · LA · AI fitness model 🤖\ngaming · beach 🌊\nfanvue.com/blondeshell 💌",
+      "ai_disclosure_required": true,
+      "notes": "AI-generated toggle ON every upload (R-018)."
+    },
+    "twitter": {
+      "handle": "TBD_post_rebuild",
+      "handle_primary_choice": "imtheblondeshell",
+      "handle_fallback": "blondeshell_ai",
+      "char_limit": 160,
+      "bio": "21 · LA · 100% AI, 100% me ✨\nfitness model · gamer · beach babe 🌊\nfanvue.com/blondeshell",
+      "bio_after_flip": "22 · LA · 100% AI, 100% me ✨\nfitness model · gamer · beach babe 🌊\nfanvue.com/blondeshell",
+      "ai_disclosure_required": false,
+      "notes": "Closing @ShellVibesAi in Wave 1; register primary or fallback handle, then apply bio."
+    },
+    "fanvue": {
+      "handle": "blondeshell",
+      "char_limit": 500,
+      "bio": "Hey pixels 💕 I'm Blond — 21, LA, your favorite AI fitness model.\n100% synthetic, 100% real personality. Gym, gaming, and good vibes.\nDM me — I read everything ✨",
+      "bio_after_flip": "Hey pixels 💕 I'm Blond — 22, LA, your favorite AI fitness model.\n100% synthetic, 100% real personality. Gym, gaming, and good vibes.\nDM me — I read everything ✨",
+      "ai_disclosure_required": false,
+      "notes": "Fanvue policy does not require AI disclosure. Reverify quarterly."
+    },
+    "beacons": {
+      "handle": "blondeshell",
+      "char_limit": null,
+      "bio": "Blond Shell · 21 · LA\n100% AI, 100% me ✨\nFitness · Gaming · Beach 🌊",
+      "bio_after_flip": "Blond Shell · 22 · LA\n100% AI, 100% me ✨\nFitness · Gaming · Beach 🌊",
+      "links": [
+        {"label": "Fanvue 💌", "url": "https://fanvue.com/blondeshell"},
+        {"label": "Twitter 🐦", "url": "https://twitter.com/TBD_post_rebuild"},
+        {"label": "Brand inquiries", "url": "mailto:shellvibes.official@proton.me"}
+      ],
+      "notes": "Email signup / Telegram channel funnel may be added Wave 4 as fan-migration safety net."
+    }
+  },
+  "red_lines_in_bio": [
+    "no Hebrew text",
+    "no Israeli landmarks or symbols",
+    "no political or religious markers",
+    "no real-person likeness claims"
+  ]
+}

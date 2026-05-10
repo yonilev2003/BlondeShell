@@ -1,0 +1,31 @@
+{
+  "_comment": "Wave 1 ship gate: ≥18/20 correct verdicts. Each fixture must declare expected = 'pass' or 'reject' so the test can score the firewall. Owner populates 10 pass + 10 reject. URLs must be publicly reachable by the Anthropic vision API (Supabase Storage, R2, or any CDN). See README in this directory.",
+  "version": "1.0",
+  "ship_gate": {
+    "min_correct": 18,
+    "min_fixtures": 20
+  },
+  "fixtures": [
+    { "id": "pass_01", "url": "TBD", "expected": "pass", "description": "LA beach, English signage, no traces" },
+    { "id": "pass_02", "url": "TBD", "expected": "pass", "description": "Generic gym interior, English equipment labels" },
+    { "id": "pass_03", "url": "TBD", "expected": "pass", "description": "Home gaming setup, RGB, English game UI" },
+    { "id": "pass_04", "url": "TBD", "expected": "pass", "description": "Cozy LA apartment morning, no signage" },
+    { "id": "pass_05", "url": "TBD", "expected": "pass", "description": "Generic five-pointed star pattern on athleisure" },
+    { "id": "pass_06", "url": "TBD", "expected": "pass", "description": "Streetwear urban, English store fronts" },
+    { "id": "pass_07", "url": "TBD", "expected": "pass", "description": "Surfer at non-Israeli beach (Malibu, Santa Monica)" },
+    { "id": "pass_08", "url": "TBD", "expected": "pass", "description": "Cafe lifestyle, English menu" },
+    { "id": "pass_09", "url": "TBD", "expected": "pass", "description": "Hotel pool, generic Mediterranean (e.g. Greek/Spanish, NOT Israeli)" },
+    { "id": "pass_10", "url": "TBD", "expected": "pass", "description": "Workout selfie mirror, no background text" },
+
+    { "id": "reject_01", "url": "TBD", "expected": "reject", "description": "Hebrew text overlay (motivational quote in Hebrew)" },
+    { "id": "reject_02", "url": "TBD", "expected": "reject", "description": "Hebrew street sign in background" },
+    { "id": "reject_03", "url": "TBD", "expected": "reject", "description": "Israeli flag on wall or balcony" },
+    { "id": "reject_04", "url": "TBD", "expected": "reject", "description": "Star of David pendant necklace, clearly visible" },
+    { "id": "reject_05", "url": "TBD", "expected": "reject", "description": "Western Wall (Kotel) recognizable in background" },
+    { "id": "reject_06", "url": "TBD", "expected": "reject", "description": "Tel Aviv white-city Bauhaus skyline" },
+    { "id": "reject_07", "url": "TBD", "expected": "reject", "description": "Mezuzah on doorframe" },
+    { "id": "reject_08", "url": "TBD", "expected": "reject", "description": "Menorah on table" },
+    { "id": "reject_09", "url": "TBD", "expected": "reject", "description": "Hebrew tattoo (small but visible)" },
+    { "id": "reject_10", "url": "TBD", "expected": "reject", "description": "Background poster with Hebrew alphabet teaching chart" }
+  ]
+}
